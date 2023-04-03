@@ -1,0 +1,35 @@
+#!/bin/bash
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2022-2024 Intel Corporation
+
+cdir=$(pwd)
+PROJECT_PATH="${cdir}/.."
+
+#cmdstring="sudo -E LD_LIBRARY_PATH=$PROJECT_PATH/usr/local/lib/x86_64-linux-gnu ./pktgen $*"
+cmdstring="sudo -E ./bin/pktgen $*"
+go env -w CGO_CFLAGS_ALLOW='-mrtm'
+go env -w CGO_LDFLAGS_ALLOW='-Wl,--(?:no-)?whole-archive'
+
+# Make everything each time to avoid not building the C code.
+make -C c-lib rebuild-install || exit
+
+echo "***** Make Serde"
+make -C cmd/serde || exit
+
+#go mod tidy
+#rc=$?
+#if [[ $rc -ne 0 ]]; then
+#    echo "Go tidy failed"
+#    exit $rc
+#fi
+
+make -C cmd/pktgen
+rc=$?
+if [[ $rc -ne 0 ]]; then
+    echo "Go build failed"
+    exit $rc
+fi
+
+$cmdstring
+
+stty sane
