@@ -1,0 +1,79 @@
+{
+    // JSONC options to configure go-pktgen
+    //   log-tty        - Optional, Output logging information to pseudo device number (use tty to see)
+    "log-tty": 1,
+    // Start of DPDK options
+    //   num-channels   - Required, Number of memory channels
+    //   num-ranks      - Optional, Number of memory ranks
+    //   memory-size    - Optional, Amount of memory to use in MBytes for DPDK
+    //   in-memory      - Optional, Do not use hugepage files, default false
+    //   file-prefix    - Optional, File prefix for hugepages, default 'rtemap_'
+    "dpdk": {
+        "num-channels": 4,
+        "num-ranks": 4,
+        "memory-size": 128,
+        "in-memory": false,
+        "file-prefix": ""
+    },
+    // Start of Pktgen options
+    //   cards          - List of PCI addresses for each NIC
+    //   mappings       - Required, Mapping ports to lcores:
+    //     {
+    //       "core": CoreID,
+    //       "mode": ModeString - core mode (Main, Rx/Tx, RxOnly, TxOnly)
+    //       "port": PortID   - Port number assigned to core
+    //       "rxdesc": 0,     - In K entries i.e., 1 = 1024, zero use default
+    //       "txdesc": 0,     - In K entries i.e., 1 = 1024, zero use default
+    //       "rxburst": 0,    - Number of Rx packets per burst
+    //       "txburst": 0,    - Number of Tx packets per burst
+    //       "rx-desc: 0,     - Optional, Size of RX descriptor ring, zero use default
+    //       "tx-desc": 0,    - Optional, Size of TX descriptor ring, zero use default
+    //       "rx-burst": 0,   - Optional, Size of Rx burst size, zero use default
+    //       "tx-burst": 0    - Optional, Size of Tx burst size, zero use default
+    //       "cache-size": 0, - Optional, Number of cache entries, -1 means no cache, 0 use default
+    //       "num-packets": 0 - Optional, In K packets i.e., 8 = (8192 RX packets)
+    //     }
+    //   promiscuous    - Optional, Set ports into promiscuous mode, default true
+    "pktgen": {
+        "cards": [
+            "86:00.0",
+            "86:00.1"
+        ],
+        "mappings": [
+            {
+                "core": 28,
+                "port": 0,
+                "mode": "Main",
+                "rx-desc": 0,
+                "tx-desc": 0,
+                "rx-burst": 0,
+                "tx-burst": 0,
+                "cache-size": 0,
+                "num-packets": 0
+            },
+            {
+                "core": 29,
+                "port": 0,
+                "mode": "Rx/Tx",
+                "rx-desc": 0,
+                "tx-desc": 0,
+                "rx-burst": 0,
+                "tx-burst": 0,
+                "cache-size": 0,
+                "num-packets": 0
+            },
+            {
+                "core": 34,
+                "port": 1,
+                "mode": "Rx/Tx",
+                "rx-desc": 0,
+                "tx-desc": 0,
+                "rx-burst": 0,
+                "tx-burst": 0,
+                "cache-size": 0,
+                "num-packets": 0
+            }
+        ],
+        "promiscuous": true
+    }
+}

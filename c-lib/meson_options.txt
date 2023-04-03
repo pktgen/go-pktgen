@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2023-2025 Intel Corporation.
+
+# Please keep the options sorted alphabetically.
+
+option('enable_docs', type: 'boolean', value: false,
+    description: 'build documentation')
+
+option('machine', type: 'string', value: 'native',
+	description: 'set the target machine type')
+
+option('verbose', type: 'boolean', value: false,
+    description: 'Verbose build messages')
