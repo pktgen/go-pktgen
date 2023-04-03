@@ -1,0 +1,27 @@
+{
+    // JSONC options to configure go-pktgen
+    //   core-list      - Required, List of core i.e., 1-5,10-15,18,20
+    //   num-channels   - Required, Number of memory channels
+    //   num-ranks      - Optional, Number of memory ranks
+    //   memory-size    - Optional, Amount of memory to use in MBytes for DPDK
+    //   in-memory      - Optional, Do not use hugepage files, default false
+    //   port-list      - Required, NIC PCI addresses to use
+    //   port-mapping   - Required, Mapping ports to lcores
+    //   file-prefix    - Optional, File prefix for hugepages, default 'rtemap_'
+    //   debug-tty      - Optional, Output logging information to pseudo device number
+    "core-list": "1-4",
+    "num-channels": 4,
+    "num-ranks": 4,
+    "memory-size": 128,
+    "in-memory": false,
+    "port-list": [
+        "86:00.0",
+        "86:00.1"
+    ],
+    "port-mapping": [
+        "[1:2].0",
+        "[3:4].1"
+    ],
+    "file-prefix": "",
+    "debug-tty": 1
+}
