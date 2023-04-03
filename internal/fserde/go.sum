@@ -1,0 +1,8 @@
+github.com/franela/goblin v0.0.0-20211003143422-0a4f594942bf h1:NrF81UtW8gG2LBGkXFQFqlfNnvMt9WdB46sfdJY4oqc=
+github.com/franela/goblin v0.0.0-20211003143422-0a4f594942bf/go.mod h1:VzmDKDJVZI3aJmnRI9VjAn9nJ8qPPsN1fqzr9dqInIo=
+github.com/pktgen/go-pktgen/internal/pcap v0.0.0-20241127154349-c83519e38a80 h1:KSTv60v5J0BKHITNqFn53x8cs4AYdaPWPJRsF7Bj/EI=
+github.com/pktgen/go-pktgen/internal/pcap v0.0.0-20241127154349-c83519e38a80/go.mod h1:lUfmgFMWFJ9abLcbFlp2cU2T44Jwk7t+1XBUvgSvdoI=
+golang.org/x/net v0.31.0 h1:68CPQngjLL0r2AlUKiSxtQFKvzRVbnzLwMUn5SzcLHo=
+golang.org/x/net v0.31.0/go.mod h1:P4fl1q7dY2hnZFxEk4pPSkDHF+QqjitcnDjUQyMM+pM=
+golang.org/x/sys v0.27.0 h1:wBqf8DvsY9Y/2P8gAfPDEYNuS30J4lPHJxXSb/nJZ+s=
+golang.org/x/sys v0.27.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=

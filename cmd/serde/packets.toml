@@ -1,0 +1,99 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2023-2025 Intel Corporation
+
+packets = [
+    """
+    PortA :=
+        Ether(dst=00:11:22:33:44:55, src=00:11:22:33:44:99, proto=0x800)/
+        IPv4(ver=4, dst=10.0.0.1, src=10.0.0.2, ttl=64)/
+        UDP(sport=1111, dport=3333, checksum=true)/
+        Payload(string='Port-AAA')/Count(5)
+    """,
+    """
+    Port0 :=
+        Ether(dst=00:11:22:33:44:55, proto=0x800)/
+        Dot1Q(tpid=0x8100, pcp=3, dei=0, vlan=1)/
+        IPv4(ver=4, dst=10.0.0.3, ttl=64)/
+        UDP(sport=5678, dport=1234, checksum=true)/
+        Defaults(Defaults-0)/Count(10)
+    """,
+    """
+    Port1 :=
+        Ether( dst=00:01:02:03:04:05 )/
+        QinQ(Dot1q{vlan=12}, Dot1q{vlan=212})/
+        IPv4(dst=10.0.10.1, src=10.0.10.2)/
+        UDP(sport=0x1234, dport=1234)/
+        Payload(string='cafefood')/
+        Defaults(Defaults-0)
+    """,
+    """
+    Port2 :=
+        Ether(dst=00:11:22:33:44:55, src = 01:ff:ff:ff:ff:ff )/
+        Dot1q(vlan=0x322, cfi=1, prio=7)/
+        IPv4(dst=10.0.20.1)/
+        UDP(sport=5699)/
+        Payload(size=128)/
+        Defaults(Defaults-0)
+    """,
+    """
+    Port3 :=
+        Ether(dst=2201:2203:4405)/
+        Dot1ad(vlan=0x22, cfi=1, prio=7)/
+        IPv4(dst=10.0.30.1)/
+        UDP(sport=5698, checksum=true)/
+        Payload(size=1)/
+        Defaults(Defaults-1)
+    """,
+    """
+    Port4 :=
+        Ether(dst=0133:0233:0333)/
+        Dot1Q(vlan=0x22, cfi=1, prio=7)/
+        Dot1ad(vlan=0x33, cfi=1, prio=7)/
+        IPv4(dst=10.0.40.1)/
+        TCP(sport=5697, dport=3000, seq=5000, ack=5001, flags=[SYN | ACK | FIN])/
+        Defaults(Defaults-1)
+    """,
+    """
+    Port5 :=
+        Ether(dst=0133:0233:0333)/
+        Dot1Q(vlan=0x22, cfi=1, prio=7)/
+        Dot1ad(vlan=0x33, cfi=1, prio=7)/
+        IPv4(dst=192.168.0.1)/
+        TCP(sport=5696, dport=2000, flags=0x12)/
+        Defaults(Defaults-1)
+    """,
+    """
+    Port6 :=
+        Ether()/
+        IPv4(dst=192.168.1.1)/
+        TCP(sport=5685, dport=1000, seq=4000, ack=4001, window=1024, flags=[ACK | PSH])/
+        Defaults(Defaults-2)
+    """,
+]
+
+defaults = [
+    """
+    Defaults-0 :=
+        Ether(src=00:01:02:03:04:FF, proto=0x800)/
+        IPv4(ver=4, src=10.0.0.2)/
+        UDP(sport=1001, dport=1024)/
+        Payload(size=8, fill16=0xaabb)
+    """,
+    """
+    Defaults-1 :=
+        Ether(src=00:05:04:03:02:01, proto=0x800)/
+        Dot1Q(tpid=0x8100, vlan=0x22, cfi=1, prio=7)/
+        IPv4(ver=4, src=9.8.7.6)/
+        UDP(sport=1002, dport=3456)/
+        Payload(size=24, fill=0xac)
+    """,
+    """
+    Defaults-2 :=
+        Ether(dst=01:22:33:44:55:66, src=00:01:02:03:04:FF, proto=0x800)/
+        IPv4(ver=4, src=6.5.7.8)/
+        UDP(sport=1003, dport=1024)/
+        Payload(size=32, fill=0xab)
+    """,
+]
+
+pcap-output-file = "foobar"
