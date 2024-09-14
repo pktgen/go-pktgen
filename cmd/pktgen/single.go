@@ -23,8 +23,8 @@ import (
 	tlog "github.com/pktgen/go-pktgen/internal/ttylog"
 )
 
-// PageSingleMode - Data for main page information
-type PageSingleMode struct {
+// PanelSingleMode - Data for main panel information
+type PanelSingleMode struct {
 	topFlex     *cview.Flex
 	configView  *configview.ConfigView
 	statsView   *statsview.StatsView
@@ -33,6 +33,7 @@ type PageSingleMode struct {
 	currentPort int
 	to          *tab.Tab
 	meter       *meter.Meter
+	myInfo      vp.PanelMap
 }
 
 const (
@@ -47,17 +48,17 @@ func init() {
 }
 
 // setupSingleMode - setup and init the single mode page
-func setupSingleMode() *PageSingleMode {
+func setupPanelSingleMode() *PanelSingleMode {
 
-	ps := &PageSingleMode{}
+	ps := &PanelSingleMode{}
 
 	return ps
 }
 
 // SingleModePanelSetup setup
-func SingleModePanelSetup(panels *cview.Panels, nextPanel func()) (title string, content cview.Primitive) {
+func SingleModePanelSetup(pi vp.VPanelConfig) (*vp.VPanelData, error) {
 
-	ps := setupSingleMode()
+	ps := setupPanelSingleMode()
 
 	ps.to = tab.New(singlePanelName, pktgen.app)
 
@@ -190,8 +191,33 @@ func SingleModePanelSetup(panels *cview.Panels, nextPanel func()) (title string,
 		}).
 		SetRateLimits(0.0, 100.0)
 
-	return singlePanelName, ps.topFlex
-}
+		return &vp.VPageData{
+			PanelName: p.infoName(),
+			HelpName:  p.infoHelp(),
+			TopFlex:   topFlex,
+			TimerFn: func(step int, ticks uint64) {
+				if step == -1 || topFlex.HasFocus() {
+					app.QueueUpdateDraw(func() {
+						ticks++
+						switch step {
+						case -1: // first time initial call
+							p.docker.UpdateAll()
+							p.displayContainers(p.containerTable)
+							p.displayProcessStatus(p.psTable)
+							p.displayNetwork(p.networkTable)
+							p.displayImages(p.imageTable)
+
+						case 0:
+							p.displayContainers(p.containerTable)
+							p.displayProcessStatus(p.psTable)
+							p.displayNetwork(p.networkTable)
+							p.displayImages(p.imageTable)
+						}
+					})
+				}
+			},
+		}, nil
+	}
 
 // Callback timer routine to display the panels
 func (ps *PageSingleMode) displaySingleMode(step int, ticks uint64) {
