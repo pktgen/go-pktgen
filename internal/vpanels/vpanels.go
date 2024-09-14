@@ -7,6 +7,8 @@ import (
 	"code.rocketnine.space/tslocum/cview"
 )
 
+type VPanelMap map[string]string
+
 type VPanelConfig struct {
 	Panel   *cview.Panels
 	App     *cview.Application
@@ -29,7 +31,7 @@ type VPanelData struct {
 	TimerFn   func(step int, ticks uint64) // Timer callback function
 }
 
-var vpanels []VPanelInfo // A list of registered panels, I SINGLETON pattern.
+var vpanels []VPanelInfo // A list of registered panels a SINGLETON pattern.
 
 func Register(vpf VPanelFunc) {
 	panel := VPanelInfo{

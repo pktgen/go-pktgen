@@ -42,8 +42,6 @@ const (
 )
 
 func init() {
-	tlog.Register("SingleModeLogID")
-
 	vp.Register(SingleModePanelSetup)
 }
 
@@ -59,7 +57,7 @@ func setupPanelSingleMode() *PanelSingleMode {
         to:          nil,
         meter:       nil,
 	}
-	ps.myInfo = vp.PanelMap{
+	ps.myInfo = vp.VPanelMap{
 		panelName:     "Single",
 		panelLogID:    "SingleLogID",
 		panelHelp:     "SingleHelp",
@@ -68,6 +66,8 @@ func setupPanelSingleMode() *PanelSingleMode {
 	tlog.Register(ps.infoLogID())
 
 	ps.topFlex.SetDirection(cview.FlexRow)
+
+	tlog.Register("SingleModeLogID")
 
 	return ps
 }
