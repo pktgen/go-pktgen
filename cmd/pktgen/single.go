@@ -50,7 +50,24 @@ func init() {
 // setupSingleMode - setup and init the single mode page
 func setupPanelSingleMode() *PanelSingleMode {
 
-	ps := &PanelSingleMode{}
+	ps := &PanelSingleMode{
+		topFlex:     cview.NewFlex(),
+        statsView:   statsview.New(pktgen.portCnt),
+        perfView:    perfview.New(),
+        portInfo:    nil,
+        currentPort: 0,
+        to:          nil,
+        meter:       nil,
+	}
+	ps.myInfo = vp.PanelMap{
+		panelName:     "Single",
+		panelLogID:    "SingleLogID",
+		panelHelp:     "SingleHelp",
+		panelHelpText: "Single Mode Help Text, press Esc to close.",
+	}
+	tlog.Register(ps.infoLogID())
+
+	ps.topFlex.SetDirection(cview.FlexRow)
 
 	return ps
 }
@@ -64,8 +81,6 @@ func SingleModePanelSetup(pi vp.VPanelConfig) (*vp.VPanelData, error) {
 
 	ps.portInfo = portinfo.New(pktgen.portCnt)
 
-	topFlex := cview.NewFlex()
-	topFlex.SetDirection(cview.FlexRow)
 	flex1 := cview.NewFlex()
 	flex1.SetDirection(cview.FlexRow)
 	flex2 := cview.NewFlex()
@@ -76,7 +91,7 @@ func SingleModePanelSetup(pi vp.VPanelConfig) (*vp.VPanelData, error) {
 	flex3 := cview.NewFlex()
 	flex3.SetDirection(cview.FlexRow)
 
-	hlp.TitleBox(topFlex, PktgenInfo(true))
+	hlp.TitleBox(ps.topFlex, PktgenInfo(true))
 
 	ps.configView = configview.Create(panels, ps.to, pktgen.portCnt, flex1)
 	topFlex.AddItem(flex1, 11, 0, true)
@@ -88,10 +103,10 @@ func SingleModePanelSetup(pi vp.VPanelConfig) (*vp.VPanelData, error) {
 	}
 
 	ps.statsView = statsview.Create(pktgen.portCnt, flex2)
-	topFlex.AddItem(flex2, 23, 0, true)
+	ps.topFlex.AddItem(flex2, 23, 0, true)
 
 	ps.perfView = perfview.Create(pktgen.portCnt, flex3, "p")
-	topFlex.AddItem(flex3, 0, 1, true)
+	ps.topFlex.AddItem(flex3, 0, 1, true)
 
 	if err := ps.to.Add("singleConfig", ps.configView.TableView(), 'c'); err != nil {
 		panic(err)
@@ -105,8 +120,6 @@ func SingleModePanelSetup(pi vp.VPanelConfig) (*vp.VPanelData, error) {
 	if err := ps.to.SetInputDone(); err != nil {
 		panic(err)
 	}
-
-	ps.topFlex = topFlex
 
 	pktgen.timers.Add(singlePanelName, func(step int, ticks uint64) {
 		if ps.topFlex.HasFocus() {
@@ -160,7 +173,7 @@ func SingleModePanelSetup(pi vp.VPanelConfig) (*vp.VPanelData, error) {
 		}
 		return event
 	})
-	topFlex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+	ps.topFlex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		k := event.Rune()
 		switch k {
 		case '?':
@@ -191,12 +204,12 @@ func SingleModePanelSetup(pi vp.VPanelConfig) (*vp.VPanelData, error) {
 		}).
 		SetRateLimits(0.0, 100.0)
 
-		return &vp.VPageData{
-			PanelName: p.infoName(),
-			HelpName:  p.infoHelp(),
-			TopFlex:   topFlex,
+		return &vp.VPanelData{
+			PanelName: ps.infoName(),
+			HelpName:  ps.infoHelp(),
+			TopFlex:   ps.topFlex,
 			TimerFn: func(step int, ticks uint64) {
-				if step == -1 || topFlex.HasFocus() {
+				if step == -1 || ps.topFlex.HasFocus() {
 					app.QueueUpdateDraw(func() {
 						ticks++
 						switch step {
