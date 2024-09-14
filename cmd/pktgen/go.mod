@@ -6,22 +6,22 @@ require (
 	code.rocketnine.space/tslocum/cview v1.5.9
 	github.com/gdamore/tcell/v2 v2.7.4
 	github.com/jessevdk/go-flags v1.6.1
-	github.com/pktgen/go-pktgen/internal/cfg v0.0.0-20240914140928-4703d57b4f98
-	github.com/pktgen/go-pktgen/internal/colorize v0.0.0-20240914153012-fed36937dcff
-	github.com/pktgen/go-pktgen/internal/configview v0.0.0-20240914140928-4703d57b4f98
-	github.com/pktgen/go-pktgen/internal/constants v0.0.0-20240914153012-fed36937dcff
-	github.com/pktgen/go-pktgen/internal/cpudata v0.0.0-20240914140928-4703d57b4f98
-	github.com/pktgen/go-pktgen/internal/dbg v0.0.0-20240914153012-fed36937dcff
-	github.com/pktgen/go-pktgen/internal/devbind v0.0.0-20240914140928-4703d57b4f98
-	github.com/pktgen/go-pktgen/internal/etimers v0.0.0-20240914140928-4703d57b4f98
-	github.com/pktgen/go-pktgen/internal/helpers v0.0.0-20240914153012-fed36937dcff
-	github.com/pktgen/go-pktgen/internal/meter v0.0.0-20240914153012-fed36937dcff
-	github.com/pktgen/go-pktgen/internal/perfview v0.0.0-20240914152723-86f72efc3375
-	github.com/pktgen/go-pktgen/internal/portinfo v0.0.0-20240914140928-4703d57b4f98
-	github.com/pktgen/go-pktgen/internal/statsview v0.0.0-20240914140928-4703d57b4f98
-	github.com/pktgen/go-pktgen/internal/taborder v0.0.0-20240914153012-fed36937dcff
-	github.com/pktgen/go-pktgen/internal/ttylog v0.0.0-20240914153012-fed36937dcff
-	github.com/pktgen/go-pktgen/internal/vpanels v0.0.0-20240914153012-fed36937dcff
+	github.com/pktgen/go-pktgen/internal/cfg v0.0.0-20240914160320-8eee2c59e6dd
+	github.com/pktgen/go-pktgen/internal/colorize v0.0.0-20240914154340-24fe47777030
+	github.com/pktgen/go-pktgen/internal/configview v0.0.0-20240914154340-24fe47777030
+	github.com/pktgen/go-pktgen/internal/constants v0.0.0-20240914154340-24fe47777030
+	github.com/pktgen/go-pktgen/internal/cpudata v0.0.0-20240914160320-8eee2c59e6dd
+	github.com/pktgen/go-pktgen/internal/dbg v0.0.0-20240914154340-24fe47777030
+	github.com/pktgen/go-pktgen/internal/devbind v0.0.0-20240914154340-24fe47777030
+	github.com/pktgen/go-pktgen/internal/etimers v0.0.0-20240914160952-069aed5670f4
+	github.com/pktgen/go-pktgen/internal/helpers v0.0.0-20240914154340-24fe47777030
+	github.com/pktgen/go-pktgen/internal/meter v0.0.0-20240914154340-24fe47777030
+	github.com/pktgen/go-pktgen/internal/perfview v0.0.0-20240914154340-24fe47777030
+	github.com/pktgen/go-pktgen/internal/portinfo v0.0.0-20240914154340-24fe47777030
+	github.com/pktgen/go-pktgen/internal/statsview v0.0.0-20240914160952-069aed5670f4
+	github.com/pktgen/go-pktgen/internal/taborder v0.0.0-20240914154340-24fe47777030
+	github.com/pktgen/go-pktgen/internal/ttylog v0.0.0-20240914154340-24fe47777030
+	github.com/pktgen/go-pktgen/internal/vpanels v0.0.0-20240914154340-24fe47777030
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	golang.org/x/text v0.18.0
 )

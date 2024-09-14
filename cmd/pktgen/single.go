@@ -33,7 +33,7 @@ type PanelSingleMode struct {
 	currentPort int
 	to          *tab.Tab
 	meter       *meter.Meter
-	myInfo      vp.PanelMap
+	myInfo      vp.VPanelMap
 }
 
 const (
