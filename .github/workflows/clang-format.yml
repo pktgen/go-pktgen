@@ -13,6 +13,6 @@ jobs:
       - uses: DoozyX/clang-format-lint-action@v0.17
         with:
           source: '.'
-          exclude: 'examples/vpp-plugin'
+          #exclude: 'examples/vpp-plugin'
           extensions: 'h,cpp,c,cc'
           clangFormatVersion: 17

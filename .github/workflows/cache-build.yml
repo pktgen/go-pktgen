@@ -21,7 +21,7 @@ jobs:
         id: prep
         run: |
           TAG=$(echo "${GITHUB_SHA}" | head -c7)
-          IMAGE="cndp"
+          IMAGE="go-pktgen"
           echo ::set-output "name=tagged_image::${IMAGE}:${TAG}"
           echo ::set-output "name=tag::${TAG}"
 
