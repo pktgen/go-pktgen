@@ -20,4 +20,3 @@ foreach d:dirs
 
      install_headers(headers, subdir: meson.project_name().to_lower())
 endforeach
-

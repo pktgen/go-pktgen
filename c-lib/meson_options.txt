@@ -11,4 +11,3 @@ option('machine', type: 'string', value: 'native',
 
 option('verbose', type: 'boolean', value: false,
     description: 'Verbose build messages')
-
