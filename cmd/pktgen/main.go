@@ -86,11 +86,7 @@ func main() {
 		log.Fatalf("Initialization failed: %s\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("Go-Pktgen: Defer tlog.Close()\n")
-	defer func() {
-		fmt.Printf("Go-Pktgen: Stopping tlog...\n")
-        tlog.Close()
-    }()
+	defer tlog.Close()
 
 	pktgen.portCnt = pktgen.cfg.PortCount()
 	if options.ShowVersion {
@@ -116,11 +112,7 @@ func main() {
 		}
 		return
 	}
-	fmt.Printf("Go-Pktgen: Defer devbind stop\n")
-	defer func() {
-		fmt.Printf("Go-Pktgen: Stopping devbind...\n")
-		pktgen.db.Stop()
-	}()
+	defer pktgen.db.Stop()
 
 	pktgen.timers = et.New(et.WithTimeout(2), et.WithSteps(4))
 	pktgen.timers.Start()
@@ -209,12 +201,7 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Printf("Go-Pktgen: Defer stopping gPkt\n")
-	defer func() {
-		fmt.Printf("Go-Pktgen: Stopping gpkt...\n")
-		gpktApiStop()
-		fmt.Printf("Go-Pktgen: Stopped gpkt...\n")
-	}()
+	defer gpktApiStop()
 
 	// Start the application.
 	pktgen.app.SetRoot(topFlex, true)
@@ -222,7 +209,6 @@ func main() {
 	if err := pktgen.app.Run(); err != nil {
 		panic(err)
 	}
-	fmt.Printf("Go-Pktgen: Stopping...\n")
 }
 
 func setupSignals(signals ...os.Signal) {

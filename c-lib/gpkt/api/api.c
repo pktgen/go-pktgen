@@ -5,6 +5,7 @@
  */
 
 #include <stdio.h>
+#include <unistd.h>
 
 #include <tlog.h>
 
@@ -15,28 +16,22 @@ gpkt_t *gpkt = &gpkt_info;
 
 // Define a structure to hold the arguments
 static struct args_t arg_data, *args = &arg_data;
-
-int
-gpktGetArgc()
-{
-    return args->argc;
-}
+static bool gpkt_exit_flag;
 
 // Set the string at the nth position in the array using strdup to avoid DPDK's string corruption
-void
+int
 gpktSetArgv(char *s)
 {
     if (args) {
-        printf("Setting argument %d to '%s'\n", args->argc, s);
-        if (args->argc >= ARGV_MAX_NUM) {
-            printf("gpktSetArgv: Error: Too many arguments (%s)\n", s);
-            return;
-        }
+        if (args->argc >= ARGV_MAX_NUM)
+            return -1;
+
         strncpy(args->argv_str[args->argc], s, ARGV_MAX_SIZE - 1);
         args->argv[args->argc] = args->argv_str[args->argc];
         args->argc++;
         free(s);
     }
+    return 0;
 }
 
 static void *
@@ -45,12 +40,8 @@ _thread_func(void *arg)
     struct args_t *args = arg;
     int err;
 
-    pthread_detach(pthread_self());
-
     if (pthread_setname_np(pthread_self(), "gpkt_thread"))
         TLOG_NULL_RET("Failed to set thread name\n");
-
-    TLOG_PRINT("DPDK thread initializing is done, pid %d tid %d\n", getpid(), gettid());
 
     if ((err = rte_eal_init(args->argc, args->argv)) < 0)
         TLOG_NULL_RET("Error with EAL initialization Error: %d\n", rte_errno);
@@ -61,13 +52,12 @@ _thread_func(void *arg)
     TLOG_PRINT("DPDK initializing is done, available ports %d of %d total, pid %d tid %d\n",
                rte_eth_dev_count_avail(), rte_eth_dev_count_total(), getpid(), gettid());
 
-    gpkt->exit_flag = false;
+    gpkt_exit_flag = false;
     for (;;) {
-        if (gpkt->exit_flag)
+        if (gpkt_exit_flag)
             break;
-        sleep(1);
+        usleep(500);
     }
-    tlog_printf("DPDK thread exiting, pid %d tid %d\n", getpid(), gettid());
 
     return NULL;
 }
@@ -76,13 +66,10 @@ _thread_func(void *arg)
 int
 gpktStart(char *pts)
 {
-    printf("Go-Pktgen is starting...\n");
     if (strlen(pts) > 0 && tlog_open(pts) < 0) {
         fprintf(stderr, "%s: Failed to open log file\n", __func__);
         return -1;
     }
-
-    tlog_printf("Go-Pktgen started tlog...\n");
 
     if (getuid() != 0)
         TLOG_ERR_RET("Go-Pktgen must be run as root for DPDK\n");
@@ -105,15 +92,13 @@ error:
 void
 gpktStop(void)
 {
-    printf("%s: gPkt is stopping... %p\n", __func__, gpkt);
     if (gpkt) {
-        printf("%s: stop gPkt thread\n", __func__);
-        gpkt->exit_flag = true;
+        gpkt_exit_flag = true;
 
-        printf("%s: close gpkt tlog\n", __func__);
+        pthread_join(gpkt->pid, NULL);
+
         tlog_close();
 
         gpkt = NULL;
     }
-    printf("%s: Done stopping gPkt\n", __func__);
 }

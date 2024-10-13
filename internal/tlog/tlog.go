@@ -9,8 +9,6 @@ import (
 	"runtime/pprof"
 	"strings"
 	"time"
-
-	"github.com/pktgen/go-pktgen/internal/utils"
 )
 
 // LogStates map of log id states
@@ -26,6 +24,7 @@ type TTYLog struct {
 	tty    string
 	fd     *os.File
 	out    chan string
+	quit   chan bool
 	done   chan bool
 	states LogStates
 }
@@ -55,7 +54,8 @@ func tlogInit() {
 	tlog.states[InfoLog] = true
 	tlog.states[DebugLog] = false
 
-	tlog.out = make(chan string)
+	tlog.out = make(chan string, 32)
+	tlog.quit = make(chan bool)
 	tlog.done = make(chan bool)
 }
 
@@ -88,19 +88,22 @@ func Open(w interface{}) error {
 	tlog.inited = true
 	go logger()
 
+	tlog.out <- fmt.Sprintf("\n*** TLOG STARTED AT %s ***\n", time.Now().Format(time.DateTime))
+
 	return nil
 }
 
 // Close - close the channel and fd
 func Close() {
 
-	// If logger is not initialized, return immediately.  This is a safeguard against segfaults
+	// If logger is not initialized, return immediately.
+	// This is a safeguard against segfaults
 	if tlog.inited {
-		if tlog.done != nil {
-			tlog.done <- true       // Signal logger to quit
-			time.Sleep(time.Second) // Wait for logger to finish
-			close(tlog.done)		// Close the done channel
-			tlog.done = nil
+		if tlog.quit != nil {
+			tlog.quit <- true // Signal logger to quit
+			<-tlog.done       // Wait for logger to finish
+			close(tlog.quit)  // Close the done channel
+			tlog.quit = nil
 		}
 
 		if tlog.out != nil {
@@ -116,24 +119,26 @@ func Close() {
 	}
 }
 
-// Register is a function to register new logging type strings
 func logger() {
 
 ForLoop:
 	for {
 		select {
-		case <-tlog.done: // Quit
+		case <-tlog.quit: // Quit
+		    fmt.Fprintf(tlog.fd, "\n*** TLOG STOPPING AT %s ***\n", time.Now().Format(time.DateTime))
 			break ForLoop
 		case str := <-tlog.out:
 			fmt.Fprintf(tlog.fd, "%s", str)
 		}
 	}
+	tlog.done <- true
 }
 
 func isInited() bool {
 	return tlog != nil && tlog.inited
 }
 
+// Register is a function to register new logging type strings
 func Register(id string, state ...bool) {
 
 	if tlog == nil || !tlog.inited {
@@ -243,7 +248,7 @@ func DebugPrintf(format string, a ...interface{}) {
 func Log(id string, format string, a ...interface{}) int {
 	if isInited() {
 		if IsActive(id) {
-			s := fmt.Sprintf(format, a...)
+			s := fmt.Sprintf(getCallerFunc()+format, a...)
 			tlog.out <- s
 			if id == FatalLog {
 				os.Exit(1)
@@ -272,7 +277,7 @@ func Printf(id string, format string, a ...interface{}) int {
 // DoPrintf - output using printf like format without leading text and checks
 func DoPrintf(format string, a ...interface{}) int {
 	if isInited() {
-		s := fmt.Sprintf(format, a...)
+		s := fmt.Sprintf(getCallerFunc()+format, a...)
 		tlog.out <- s
 		return len(s)
 	}

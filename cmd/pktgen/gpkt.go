@@ -22,8 +22,6 @@ import (
 // gpktApiStart returning the basic information string
 func gpktApiStart(c *cfg.System) error {
 
-	tlog.DoPrintf("Starting Go-Pktgen with configData: %+v\n", c)
-
 	// Convert the configData to C-compatible types
 	argv, err := c.MakeArgs()
 	if err != nil {
@@ -41,7 +39,9 @@ func gpktApiStart(c *cfg.System) error {
 	// Set the C-compatible array of strings
 	for _, s := range argv {
 		cStr := C.CString(s)
-		C.gpktSetArgv(cStr)
+		if ret := C.gpktSetArgv(cStr); ret < 0 {
+            return fmt.Errorf("error setting C-compatible argument")
+        }
 	}
 
 	// Set the Ptty if provided for logging
@@ -61,13 +61,11 @@ func gpktApiStart(c *cfg.System) error {
 	if ret := C.gpktStart(cStr); ret < 0 {
 		return fmt.Errorf("failed to initialize DPDK")
 	}
-	tlog.DoPrintf("Started gPkt return OK\n")
 
 	return nil
 }
 
 // gpktApiStop is the function to stop DPDK
 func gpktApiStop() {
-	tlog.DoPrintf("Stopping gPkt...\n")
     C.gpktStop()
 }

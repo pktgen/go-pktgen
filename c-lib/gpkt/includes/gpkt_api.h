@@ -23,9 +23,7 @@ int gpktStart(char *pts);
 
 void gpktStop(void);
 
-void gpktSetArgv(char *s);
-
-int gpktGetArgc(void);
+int gpktSetArgv(char *s);
 
 #ifdef __cplusplus
 }

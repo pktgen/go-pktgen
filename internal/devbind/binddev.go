@@ -83,6 +83,7 @@ type DevBind struct {
 	pciLines    []string            // PCI lines
 	timeout     time.Duration       // Timeout for commands
 	quit        chan bool           // Channel to signal quit
+	done        chan bool           // Channel to signal completion
 	pciAddrs    map[string]bindInfo // Map of PCI addresses to device IDs
 	shellCmd    string              // Path to shell command
 }
@@ -103,6 +104,21 @@ func WithShellCmd(path string) DevBindOption {
 	}
 }
 
+// writeOnlyFile writes data to the named file and error out if not found.
+// Since writeOnlyFile requires multiple system calls to complete, a failure mid-operation
+// can leave the file in a partially written state.
+func writeOnlyFile(name string, data []byte) error {
+	f, err := os.OpenFile(name, os.O_WRONLY, 0)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(data)
+	if err1 := f.Close(); err1 != nil && err == nil {
+		err = err1
+	}
+	return err
+}
+
 func New(options ...DevBindOption) *DevBind {
 
 	db := &DevBind{
@@ -111,6 +127,7 @@ func New(options ...DevBindOption) *DevBind {
 		pciAddrs:    make(map[string]bindInfo),
 		timeout:     defaultTimeout,
 		quit:        make(chan bool),
+		done:        make(chan bool),
 		shellCmd:    shellCmd,
 	}
 
@@ -119,7 +136,6 @@ func New(options ...DevBindOption) *DevBind {
 		f(db)
 	}
 
-	runBashCmd(modProbe) // Make sure vfio-pci module is loaded
 	db.Inited = true
 
 	return db
@@ -141,33 +157,25 @@ func (db *DevBind) Start() {
 	db.updateInfo()
 
 	go func() {
+	ForLoop:
 		for {
 			select {
 			case <-db.quit: // Stop the goroutine
-				fmt.Printf("DevBind: stopped\n")
-				return
+				break ForLoop
 			case <-time.After(db.timeout):
-				fmt.Printf("DevBind: Timeout\n")
 				// Fetch network interface information
 				db.updateInfo()
 			}
 		}
+		db.done <- true
 	}()
 }
 
 func (db *DevBind) Stop() {
 
-	fmt.Printf("DevBind.Stop: Stop goroutine\n")
 	db.quit <- true
 
-	fmt.Printf("DevBind.Stop: Sleep\n")
-	time.Sleep(time.Second) // Wait for goroutine to finish
-	fmt.Printf("DevBind.Stop: Sleep Done\n")
-
-	fmt.Printf("DevBind.Stop: Unbind ports\n")
-	// Unbind all devices
-	db.UnbindPorts()
-	fmt.Printf("DevBind.Stop: Unbind ports done\n")
+	<-db.done // Wait for goroutine to finish
 
 	db.Inited = false
 }
@@ -175,16 +183,14 @@ func (db *DevBind) Stop() {
 func (db *DevBind) updateHWInfo() {
 
 	if !db.Inited {
-		fmt.Println("DevBind object not initialized")
+		tlog.DoPrintf("DevBind object not initialized\n")
 		return
     }
 
-	fmt.Printf("DevBind.updateHWInfo: Get hwinfo\n")
 	lshw := runBashCmd(hwInfoCmd)
 
-	fmt.Printf("DevBind.updateHWInfo: Unmarshal\n")
 	if err := json.Unmarshal(lshw.Bytes(), &db.hwInfo); err != nil {
-		fmt.Printf("error unmarshal HwInfo: %s\n", err)
+		tlog.DoPrintf("error unmarshal HwInfo: %s\n", err)
 	}
 
 	for _, info := range db.hwInfo {
@@ -194,42 +200,39 @@ func (db *DevBind) updateHWInfo() {
 			db.hwDriverMap[strings.TrimSpace(info.Config.Driver)] = info
 		}
 		pci := strings.TrimPrefix(info.BusInfo, "pci@")
-		fmt.Printf("Add pci: %s, driver: %s\n", pci, drvName)
 		db.hwBusMap[pci] = info
 	}
-	fmt.Printf("DevBind.updateHWInfo: Done\n")
 }
 
 func (db *DevBind) updateIPRoute() {
 
 	if !db.Inited {
+		tlog.DoPrintf("DevBind object not initialized\n")
 		return
     }
-	fmt.Printf("DevBind.updateIPRoute: Get IPRoute\n")
 	routes := runBashCmd(ipRouteCmd)
 
 	if err := json.Unmarshal(routes.Bytes(), &db.ipRoute); err != nil {
-		fmt.Printf("error unmarshal IPRoute: %s\n", err)
+		tlog.DoPrintf("error unmarshal IPRoute: %s\n", err)
 	}
-	fmt.Printf("DevBind.updateIPRoute: Done\n")
 }
 
 func (db *DevBind) updatePCILines() {
 
 	if !db.Inited {
+		tlog.DoPrintf("DevBind object not initialized\n")
 		return
     }
-	fmt.Printf("DevBind.updatePCILines: Get\n")
 	lspci := runBashCmd(pciLinesCmd)
 
 	// Remove leading and trailing whitespace and split into lines.
 	db.pciLines = strings.Split(strings.TrimSpace(lspci.String()), "\n")
-	fmt.Printf("DevBind.updatePCILines: Done\n")
 }
 
 func (db *DevBind) BindPorts(pciList []*string) error {
 
 	if !db.Inited {
+		tlog.DoPrintf("DevBind object not initialized\n")
 		return fmt.Errorf("devbind is nit initialized")
     }
 	if len(pciList) == 0 {
@@ -262,7 +265,8 @@ unbind_one: /sys/bus/pci/drivers/i40e/unbind = 0000:86:00.0
 func (db *DevBind) BindPort(pciAddr string) error {
 
 	if !db.Inited {
-		return fmt.Errorf("devbind is nit initialized")
+		tlog.DoPrintf("DevBind object not initialized\n")
+		return fmt.Errorf("devbind is not initialized")
     }
 
 	if v, ok := db.hwBusMap[pciAddr]; ok {
@@ -275,12 +279,12 @@ func (db *DevBind) BindPort(pciAddr string) error {
 		db.pciAddrs[pciAddr] = b
 
 		// Unbind the pci device if not bound to vfio-pci
-		if len(v.Config.Driver) > 0 && v.Config.Driver != "vfio-pci" {
-			if err := db.unbind(b.BusInfo, b.Driver); err != nil {
+		if v.Config.Driver != "" && v.Config.Driver != "vfio-pci" {
+			if err := db.unbind(b.Driver, b.BusInfo); err != nil {
 				return err
 			}
 		} else {
-			fmt.Printf("PCI address %s already bound to vfio-pci\n", pciAddr)
+			tlog.DoPrintf("PCI address %s already bound to vfio-pci\n", pciAddr)
 			return nil
 		}
 		// Override the driver
@@ -304,10 +308,12 @@ func (db *DevBind) BindPort(pciAddr string) error {
 	return nil
 }
 
+/*
 func (db *DevBind) UnbindPorts() error {
 
 	if !db.Inited {
-		return fmt.Errorf("devbind is nit initialized")
+		tlog.DoPrintf("DevBind object not initialized\n")
+		return fmt.Errorf("devbind is not initialized")
     }
 
 	if len(db.pciAddrs) == 0 {
@@ -324,19 +330,18 @@ func (db *DevBind) UnbindPorts() error {
 	return nil
 }
 
-/*
-sudo ./dpdk-devbind.py -b i40e 86:00.0
-unbind_one: /sys/bus/pci/drivers/vfio-pci/unbind = 0000:86:00.0
-2 bind_one: /sys/bus/pci/drivers/i40e/bind = 0000:86:00.0
-3 bind_one: /sys/bus/pci/devices/0000:86:00.0/driver_override = 0
-*/
+// sudo ./dpdk-devbind.py -b i40e 86:00.0
+// unbind_one: /sys/bus/pci/drivers/vfio-pci/unbind = 0000:86:00.0
+// 2 bind_one: /sys/bus/pci/drivers/i40e/bind = 0000:86:00.0
+// 3 bind_one: /sys/bus/pci/devices/0000:86:00.0/driver_override = 0
 func (db *DevBind) UnbindPort(drv, oDrv, bus string) error {
 
 	if !db.Inited {
-		return fmt.Errorf("devbind is nit initialized")
+		tlog.DoPrintf("DevBind object not initialized\n")
+		return fmt.Errorf("devbind is not initialized")
     }
 
-	if err := db.unbind(bus, drv); err != nil {
+	if err := db.unbind(drv, bus); err != nil {
 		return err
 	}
 
@@ -352,10 +357,11 @@ func (db *DevBind) UnbindPort(drv, oDrv, bus string) error {
 
 	return nil
 }
+*/
 
 func (db *DevBind) PCILines() []string {
 	if !db.Inited {
-		fmt.Printf("devbind is nit initialized\n")
+		tlog.DoPrintf("DevBind object not initialized\n")
 		return nil
     }
 	return db.pciLines
@@ -363,7 +369,7 @@ func (db *DevBind) PCILines() []string {
 
 func (db *DevBind) HwInfo() []*HwInfo {
 	if !db.Inited {
-		fmt.Printf("devbind is nit initialized\n")
+		tlog.DoPrintf("DevBind object not initialized\n")
 		return nil
     }
 	db.hwLock.Lock()
@@ -374,7 +380,7 @@ func (db *DevBind) HwInfo() []*HwInfo {
 
 func (db *DevBind) HwDriverMap() map[string]*HwInfo {
 	if !db.Inited {
-		fmt.Printf("devbind is nit initialized\n")
+		tlog.DoPrintf("devbind is nit initialized\n")
 		return nil
     }
 	return db.hwDriverMap
@@ -382,7 +388,7 @@ func (db *DevBind) HwDriverMap() map[string]*HwInfo {
 
 func (db *DevBind) HwBusMap() map[string]*HwInfo {
 	if !db.Inited {
-		fmt.Printf("devbind is nit initialized\n")
+		tlog.DoPrintf("DevBind object not initialized\n")
 		return nil
     }
 	return db.hwBusMap
@@ -390,7 +396,7 @@ func (db *DevBind) HwBusMap() map[string]*HwInfo {
 
 func (db *DevBind) IPRoute() IPRoute {
 	if !db.Inited {
-		fmt.Printf("devbind is nit initialized\n")
+		tlog.DoPrintf("DevBind object not initialized\n")
 		return IPRoute{}
     }
 	return db.ipRoute
@@ -400,15 +406,15 @@ func (db *DevBind) override(bus, drv string) error {
 
 	override := fmt.Sprintf(driverOverride, bus)
 
-	val := []byte("")
+	val := []byte("\000")
 
 	// Override the driver
 	if drv != "" {
 		val = []byte(drv)
 	}
-	tlog.DoPrintf("Override: %s = %s(%d)\n", override, val, len(val))
+	tlog.DoPrintf("Override: %s = (%s)(%d)\n", override, val, len(val))
 
-	if err := os.WriteFile(override, val, 0644); err != nil {
+	if err := writeOnlyFile(override, val); err != nil {
 		return err
 	}
 
@@ -419,23 +425,23 @@ func (db *DevBind) bind(drv, bus string) error {
 
 	bind := fmt.Sprintf(driverBind, drv)
 
-	tlog.DoPrintf("    Bind: %s = %s\n", bind, bus)
+	tlog.DoPrintf("    Bind: %s = %s(%d)\n", bind, bus, len(bus))
 
 	// Bind the driver
-	if err := os.WriteFile(bind, []byte(bus), 0644); err != nil {
+	if err := writeOnlyFile(bind, []byte(bus)); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (db *DevBind) unbind(bus, drv string) error {
+func (db *DevBind) unbind(drv, bus string) error {
 
-	bind := fmt.Sprintf(driverUnbind, drv)
+	unbind := fmt.Sprintf(driverUnbind, drv)
 
-	tlog.DoPrintf("  Unbind: %s = %s\n", bind, bus)
+	tlog.DoPrintf("  Unbind: %s = %s(%d)\n", unbind, bus, len(bus))
 
 	// Unbind the driver
-	if err := os.WriteFile(bind, []byte(bus), 0644); err != nil {
+	if err := writeOnlyFile(unbind, []byte(bus)); err != nil {
 		return err
 	}
 	return nil
