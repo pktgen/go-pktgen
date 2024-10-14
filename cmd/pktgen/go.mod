@@ -29,6 +29,7 @@ require (
 require (
 	code.rocketnine.space/tslocum/cbind v0.1.5 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/ebitengine/purego v0.8.0 // indirect
 	github.com/fatih/color v1.17.0 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect

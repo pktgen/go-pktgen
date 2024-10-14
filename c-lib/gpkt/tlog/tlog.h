@@ -21,7 +21,7 @@ typedef struct tlog_s {
     int buf_len;
 } tlog_t;
 
-int tlog_open(char *pts);
+int tlog_open(int pts);
 void tlog_close(void);
 
 /**

@@ -8,7 +8,7 @@ project('go-pktgen', 'c',
     license: 'BSD',
     default_options: [
         'buildtype=release',
-        'default_library=static',
+        'default_library=shared',
         'warning_level=3',
         'werror=true'
     ],

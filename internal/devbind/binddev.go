@@ -191,6 +191,7 @@ func (db *DevBind) updateHWInfo() {
 
 	if err := json.Unmarshal(lshw.Bytes(), &db.hwInfo); err != nil {
 		tlog.DoPrintf("error unmarshal HwInfo: %s\n", err)
+		tlog.DoPrintf("lshw output:\n%s\n", lshw.String())
 	}
 
 	for _, info := range db.hwInfo {

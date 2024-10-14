@@ -18,7 +18,6 @@ gpkt_t *gpkt = &gpkt_info;
 static struct args_t arg_data, *args = &arg_data;
 static bool gpkt_exit_flag;
 
-// Set the string at the nth position in the array using strdup to avoid DPDK's string corruption
 int
 gpktSetArgv(char *s)
 {
@@ -29,7 +28,6 @@ gpktSetArgv(char *s)
         strncpy(args->argv_str[args->argc], s, ARGV_MAX_SIZE - 1);
         args->argv[args->argc] = args->argv_str[args->argc];
         args->argc++;
-        free(s);
     }
     return 0;
 }
@@ -40,8 +38,14 @@ _thread_func(void *arg)
     struct args_t *args = arg;
     int err;
 
+    tlog_printf("Initializing Go-Pktgen thread...\n");
+
     if (pthread_setname_np(pthread_self(), "gpkt_thread"))
         TLOG_NULL_RET("Failed to set thread name\n");
+
+    tlog_printf("Initializing Go-Pktgen thread with %d args...\n", args->argc);
+    for (int i = 0; i < args->argc; i++)
+        tlog_printf("    argv[%d]: %s\n", i, args->argv[i]);
 
     if ((err = rte_eal_init(args->argc, args->argv)) < 0)
         TLOG_NULL_RET("Error with EAL initialization Error: %d\n", rte_errno);
@@ -64,13 +68,8 @@ _thread_func(void *arg)
 
 // Initialize DPDK
 int
-gpktStart(char *pts)
+gpktStart(void)
 {
-    if (strlen(pts) > 0 && tlog_open(pts) < 0) {
-        fprintf(stderr, "%s: Failed to open log file\n", __func__);
-        return -1;
-    }
-
     if (getuid() != 0)
         TLOG_ERR_RET("Go-Pktgen must be run as root for DPDK\n");
 

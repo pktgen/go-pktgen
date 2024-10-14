@@ -58,7 +58,8 @@ type Pktgen struct {
 	portCnt    int                // Maximum number of ports
 	cfg        *cfg.System        // Configuration system
 	ModalPages []*ModalPage       // Modal pages
-	db         *devbind.DevBind
+	db         *devbind.DevBind	  // Device binding object
+	PureGo     uintptr			  // PureGo object
 }
 
 // Options command line options

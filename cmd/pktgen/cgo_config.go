@@ -9,4 +9,4 @@ package main
 #cgo CFLAGS: -I../../c-lib/usr/local/include/go-pktgen
 #cgo LDFLAGS: -L../../c-lib/usr/local/lib/x86_64-linux-gnu -lgpkt -lbsd
 */
-import "C"
+//import "C"

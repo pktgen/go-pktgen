@@ -18,10 +18,15 @@
 
 static tlog_t tlog_info, *tlog;
 
+#define TLOG_PATH_PREFIX "/dev/pts/"
+
 int
-tlog_open(char *pts)
+tlog_open(int pts)
 {
-    char buffer[128];
+    char buffer[64];
+
+    if (pts == 0)
+        return 0;
 
     if (tlog == NULL) {
         memset(&tlog_info, 0, sizeof(tlog_info));
@@ -29,18 +34,11 @@ tlog_open(char *pts)
         tlog->fd = -1;
     }
 
-    if (pts == NULL || strlen(pts) == 0) {
-        fprintf(stderr, "ERROR: No log file specified\n");
-        return 0;
-    }
-
     if (tlog->fd > 0)
         close(tlog->fd);
 
-    if (strncmp(pts, "/dev/pts/", 9))
-        snprintf(buffer, sizeof(buffer) - 1, "/dev/pts/%s", pts);
-    else
-        snprintf(buffer, sizeof(buffer) - 1, "%s", pts);
+    snprintf(buffer, sizeof(buffer) - 1, TLOG_PATH_PREFIX "%d", pts);
+
     tlog->fd = open(buffer, O_WRONLY);
     if (tlog->fd < 0) {
         fprintf(stderr, "Failed to open log file: (%s), %s(%d)\n", buffer, strerror(errno), errno);

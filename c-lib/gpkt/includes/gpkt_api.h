@@ -19,7 +19,7 @@ extern "C" {
  *
  * @return 0 on success, or a negative value on error.
  */
-int gpktStart(char *pts);
+int gpktStart(void);
 
 void gpktStop(void);
 
