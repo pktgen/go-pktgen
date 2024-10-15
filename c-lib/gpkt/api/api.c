@@ -60,7 +60,7 @@ _thread_func(void *arg)
     for (;;) {
         if (gpkt_exit_flag)
             break;
-        usleep(500);
+        usleep(10000);
     }
 
     return NULL;

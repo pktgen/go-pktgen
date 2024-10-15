@@ -3,12 +3,6 @@
 
 package main
 
-/*
-#include <stdio.h>
-#include <stdlib.h>
-*/
-//import "C"
-
 import (
 	"fmt"
 	"os"
@@ -52,6 +46,7 @@ func openLibrary(name string) (uintptr, error) {
 
 func gpktLoadApis() error {
 
+	tlog.DoPrintf("Loading %s...\n", gpktApiLibName)
 	if lib, err := openLibrary(gpktApiLibName); err != nil {
 		return fmt.Errorf("error loading %s", gpktApiLibName)
 	} else {
@@ -67,6 +62,7 @@ func gpktLoadApis() error {
 		gApi = g
 	}
 
+	tlog.DoPrintf("Loading %s...\n", gpktSingleLibName)
 	if lib, err := openLibrary(gpktSingleLibName); err != nil {
 		return fmt.Errorf("error loading %s", gpktSingleLibName)
 	} else {
