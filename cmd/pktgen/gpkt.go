@@ -13,8 +13,9 @@ import (
 )
 
 const (
-	gpktApiLibName    string = "libgpkt_api.so"
-	gpktSingleLibName string = "libgpkt_single.so"
+	gpktApiLibName    string = "./c-lib/usr/local/lib/x86_64-linux-gnu/libgpkt_api.so"
+	gpktSingleLibName string = "./c-lib/usr/local/lib/x86_64-linux-gnu/libgpkt_single.so"
+	tlogLibName string = "./c-lib/usr/local/lib/x86_64-linux-gnu/libgpkt_tlog.so"
 )
 
 type gpktLib struct {
@@ -46,9 +47,12 @@ func openLibrary(name string) (uintptr, error) {
 
 func gpktLoadApis() error {
 
+	if _, err := openLibrary(tlogLibName); err != nil {
+		return fmt.Errorf("error loading %s: %v", tlogLibName, err)
+	}
 	tlog.DoPrintf("Loading %s...\n", gpktApiLibName)
 	if lib, err := openLibrary(gpktApiLibName); err != nil {
-		return fmt.Errorf("error loading %s", gpktApiLibName)
+		return fmt.Errorf("error loading %s: %v", gpktApiLibName, err)
 	} else {
 		g := gpktApiLib{}
 		g.libName = gpktApiLibName

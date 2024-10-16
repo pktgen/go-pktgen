@@ -28,15 +28,15 @@ The JSONC
 // Make sure the order of the constants above is the same as the order of the
 // of the structure below.
 type configData struct {
-	CoreList             *string   `json:"core-list"`
-	NumChannels          int       `json:"num-channels"`
-	NumRanks             int       `json:"num-ranks"`
-	MemorySize           uint64    `json:"memory-size"`
-	InMemory             bool      `json:"in-memory"`
-	PortList             []*string `json:"port-list"`
-	PortMapping          []*string `json:"port-mapping"`
-	FilePrefix           string    `json:"file-prefix"`
-	DebugTTY             int       `json:"debug-tty"`
+	CoreList    *string  `json:"core-list"`
+	NumChannels int      `json:"num-channels"`
+	NumRanks    int      `json:"num-ranks"`
+	MemorySize  uint64   `json:"memory-size"`
+	InMemory    bool     `json:"in-memory"`
+	PortList    []string `json:"port-list"`
+	PortMapping []string `json:"port-mapping"`
+	FilePrefix  string   `json:"file-prefix"`
+	DebugTTY    int      `json:"debug-tty"`
 }
 
 type System struct {
@@ -49,15 +49,15 @@ func New() *System {
 	return &System{
 		cBytes: []byte("{}"),
 		cd: configData{
-			CoreList:             nil,
-			NumChannels:          0,
-			NumRanks:             0,
-			MemorySize:           0, // Size of memory is in MBytes.
-			InMemory:             false,
-			PortList:             nil,
-			PortMapping:          nil,
-			FilePrefix:           "",
-            DebugTTY:             -1, // -1 means no debug tty used for logging.
+			CoreList:    nil,
+			NumChannels: 0,
+			NumRanks:    0,
+			MemorySize:  0, // Size of memory is in MBytes.
+			InMemory:    false,
+			PortList:    nil,
+			PortMapping: nil,
+			FilePrefix:  "",
+			DebugTTY:    -1, // -1 means no debug tty used for logging.
 		},
 	}
 }
@@ -148,7 +148,7 @@ func (cs *System) InMemory() bool {
 	return cs.cd.InMemory
 }
 
-func (cs *System) PortList() []*string {
+func (cs *System) PortList() []string {
 
 	return cs.cd.PortList
 }
@@ -157,7 +157,7 @@ func (cs *System) PortCount() int {
 	return len(cs.cd.PortList)
 }
 
-func (cs *System) PortMapping() []*string {
+func (cs *System) PortMapping() []string {
 
 	return cs.cd.PortMapping
 }
@@ -190,7 +190,7 @@ func (cs *System) MakeArgs() ([]string, error) {
 		argv = append(argv, "-n", strconv.Itoa(chnls))
 	} else {
 		return nil, fmt.Errorf("num-channels option is required")
-    }
+	}
 	if ranks := cs.NumRanks(); ranks > 0 {
 		argv = append(argv, "-r", strconv.Itoa(ranks))
 	}
@@ -205,9 +205,9 @@ func (cs *System) MakeArgs() ([]string, error) {
 	}
 	if len(cs.PortList()) > 0 {
 		for _, port := range cs.PortList() {
-			argv = append(argv, "-a", *port)
+			argv = append(argv, "-a", port)
 		}
-    } else {
+	} else {
 		return nil, fmt.Errorf("port-list option is required")
 	}
 

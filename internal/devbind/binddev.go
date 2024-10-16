@@ -25,6 +25,7 @@ const (
 
 	// Command to retrieve PCI lines
 	pciLinesCmd = "lspci | grep Ether"
+	pciHwCmd    = "lspci -Dvmmnnk"
 
 	// Default timeout for commands
 	defaultTimeout = 10 * time.Second
@@ -38,6 +39,35 @@ const (
 	// The shell command to execute or path to the shell command
 	shellCmd = "bash"
 )
+
+/*
+Slot:	0000:86:00.0
+Class:	Ethernet controller [0200]
+Vendor:	Intel Corporation [8086]
+Device:	Ethernet Controller XL710 for 40GbE QSFP+ [1583]
+SVendor:	Intel Corporation [8086]
+SDevice:	Ethernet Converged Network Adapter XL710-Q2 [0001]
+Rev:	02
+ProgIf:	00
+Driver:	vfio-pci
+Module:	i40e
+NUMANode:	1
+IOMMUGroup:	8
+*/
+type NetInfo struct {
+	Slot       string // PCI address: 0000:3b:00.0
+	Class      string // Class: Ethernet controller [0200]
+	Vendor     string // Vendor: Intel Corporation [8086]
+	Device     string // Device: Ethernet Network Adapter E810-C-Q1 [8086:0001]
+	SVendor    string // Subsystem vendor: Intel Corporation [8086]
+	SDevice    string // Subsystem device: Ethernet Network Adapter E810-C-Q1 [8086:0001]
+	Rev        string // Revision: 02
+	ProgIf     string // Programmable interface: 00
+	Driver     string // Kernel driver in use: ice
+	Module     string // Kernel module: ice
+	NumaNode   string // Numa node: 0
+	IommuGroup string // IOMMU group: 8
+}
 
 // JSON information about network interfaces from 'ip -j -o route' command.
 type IPRoute []struct {
@@ -86,6 +116,8 @@ type DevBind struct {
 	done        chan bool           // Channel to signal completion
 	pciAddrs    map[string]bindInfo // Map of PCI addresses to device IDs
 	shellCmd    string              // Path to shell command
+	pciNetMap   map[string]*NetInfo // Map of PCI network information
+	pciNetList  []NetInfo           // Slice of PCI network information
 }
 
 type DevBindOption func(*DevBind)
@@ -129,6 +161,8 @@ func New(options ...DevBindOption) *DevBind {
 		quit:        make(chan bool),
 		done:        make(chan bool),
 		shellCmd:    shellCmd,
+		pciNetMap:   make(map[string]*NetInfo),
+		pciNetList:  make([]NetInfo, 0),
 	}
 
 	// Process the option function calls
@@ -149,6 +183,7 @@ func (db *DevBind) updateInfo() {
 	db.updatePCILines()
 	db.updateIPRoute()
 	db.updateHWInfo()
+	db.netDeviceInfo()
 }
 
 func (db *DevBind) Start() {
@@ -180,14 +215,89 @@ func (db *DevBind) Stop() {
 	db.Inited = false
 }
 
+/*
+Slot:	0000:86:00.0
+Class:	Ethernet controller [0200]
+Vendor:	Intel Corporation [8086]
+Device:	Ethernet Controller XL710 for 40GbE QSFP+ [1583]
+SVendor:	Intel Corporation [8086]
+SDevice:	Ethernet Converged Network Adapter XL710-Q2 [0001]
+Rev:	02
+ProgIf:	00
+Driver:	vfio-pci
+Module:	i40e
+NUMANode:	1
+IOMMUGroup:	8
+*/
+func (db *DevBind) netDeviceInfo() {
+	if !db.Inited {
+		tlog.DoPrintf("DevBind object not initialized\n")
+		return
+	}
+
+	hwInfoStr := runBashCmd(pciHwCmd)
+	lines := strings.Split(hwInfoStr.String(), "\n")
+
+	slot := ""
+	hw := &NetInfo{}
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+
+		s := strings.Split(line, ":")[0]
+		switch s {
+		case "Slot":
+			slot = strings.TrimSpace(line[6:])
+		case "Class":
+			if strings.Contains(line, "Ethernet controller") {
+				hw = &NetInfo{Slot: slot, Class: strings.TrimSpace(line[7:])}
+			}
+			slot = ""
+		case "Vendor":
+			hw.Vendor = strings.TrimSpace(line[8:])
+		case "Device":
+			hw.Device = strings.TrimSpace(line[8:])
+		case "SVendor":
+			hw.SVendor = strings.TrimSpace(line[9:])
+		case "SDevice":
+			hw.SDevice = strings.TrimSpace(line[9:])
+		case "Rev":
+			hw.Rev = strings.TrimSpace(line[4:])
+		case "ProgIf":
+			hw.ProgIf = strings.TrimSpace(line[8:])
+		case "Driver":
+			hw.Driver = strings.TrimSpace(line[8:])
+		case "Module":
+			hw.Module = strings.TrimSpace(line[8:])
+		case "NUMANode":
+			hw.NumaNode = strings.TrimSpace(line[10:])
+		case "IOMMUGroup":
+			hw.IommuGroup = strings.TrimSpace(line[12:])
+		case "":
+			if hw.Slot != "" {
+				db.pciNetMap[hw.Slot] = hw
+				db.pciNetList = append(db.pciNetList, *hw)
+				hw = &NetInfo{}
+			}
+		default:
+		}
+	}
+}
+
 func (db *DevBind) updateHWInfo() {
 
 	if !db.Inited {
 		tlog.DoPrintf("DevBind object not initialized\n")
 		return
-    }
+	}
 
 	lshw := runBashCmd(hwInfoCmd)
+
+	lines := strings.Split(lshw.String(), "\n")
+	if strings.HasPrefix(lines[0], "WARNING:") {
+		tlog.DoPrintf("error running lshw:\n%s\n", lines[0])
+		fmt.Printf("error running lshw: %s\n", lines[0])
+		return
+	}
 
 	if err := json.Unmarshal(lshw.Bytes(), &db.hwInfo); err != nil {
 		tlog.DoPrintf("error unmarshal HwInfo: %s\n", err)
@@ -210,7 +320,7 @@ func (db *DevBind) updateIPRoute() {
 	if !db.Inited {
 		tlog.DoPrintf("DevBind object not initialized\n")
 		return
-    }
+	}
 	routes := runBashCmd(ipRouteCmd)
 
 	if err := json.Unmarshal(routes.Bytes(), &db.ipRoute); err != nil {
@@ -223,19 +333,19 @@ func (db *DevBind) updatePCILines() {
 	if !db.Inited {
 		tlog.DoPrintf("DevBind object not initialized\n")
 		return
-    }
+	}
 	lspci := runBashCmd(pciLinesCmd)
 
 	// Remove leading and trailing whitespace and split into lines.
 	db.pciLines = strings.Split(strings.TrimSpace(lspci.String()), "\n")
 }
 
-func (db *DevBind) BindPorts(pciList []*string) error {
+func (db *DevBind) BindPorts(pciList []string) error {
 
 	if !db.Inited {
 		tlog.DoPrintf("DevBind object not initialized\n")
 		return fmt.Errorf("devbind is nit initialized")
-    }
+	}
 	if len(pciList) == 0 {
 		return fmt.Errorf("no ports specified")
 	}
@@ -244,9 +354,9 @@ func (db *DevBind) BindPorts(pciList []*string) error {
 	defer db.hwLock.Unlock()
 
 	for _, pciAddr := range pciList {
-		pci := *pciAddr
+		pci := pciAddr
 		if !strings.HasPrefix(pci, "0000:") {
-			pci = "0000:" + *pciAddr // prepend 0000: to make it a valid PCI address
+			pci = "0000:" + pciAddr // prepend 0000: to make it a valid PCI address
 		}
 		if err := db.BindPort(pci); err != nil {
 			return err
@@ -268,7 +378,7 @@ func (db *DevBind) BindPort(pciAddr string) error {
 	if !db.Inited {
 		tlog.DoPrintf("DevBind object not initialized\n")
 		return fmt.Errorf("devbind is not initialized")
-    }
+	}
 
 	if v, ok := db.hwBusMap[pciAddr]; ok {
 		b := bindInfo{
@@ -309,8 +419,7 @@ func (db *DevBind) BindPort(pciAddr string) error {
 	return nil
 }
 
-/*
-func (db *DevBind) UnbindPorts() error {
+func (db *DevBind) UnbindPorts(devices []string) error {
 
 	if !db.Inited {
 		tlog.DoPrintf("DevBind object not initialized\n")
@@ -358,13 +467,20 @@ func (db *DevBind) UnbindPort(drv, oDrv, bus string) error {
 
 	return nil
 }
-*/
+
+func (db *DevBind) NetList() []NetInfo {
+	if !db.Inited {
+		tlog.DoPrintf("DevBind object not initialized\n")
+		return nil
+	}
+	return db.pciNetList
+}
 
 func (db *DevBind) PCILines() []string {
 	if !db.Inited {
 		tlog.DoPrintf("DevBind object not initialized\n")
 		return nil
-    }
+	}
 	return db.pciLines
 }
 
@@ -372,7 +488,7 @@ func (db *DevBind) HwInfo() []*HwInfo {
 	if !db.Inited {
 		tlog.DoPrintf("DevBind object not initialized\n")
 		return nil
-    }
+	}
 	db.hwLock.Lock()
 	defer db.hwLock.Unlock()
 
@@ -381,9 +497,9 @@ func (db *DevBind) HwInfo() []*HwInfo {
 
 func (db *DevBind) HwDriverMap() map[string]*HwInfo {
 	if !db.Inited {
-		tlog.DoPrintf("devbind is nit initialized\n")
+		tlog.DoPrintf("devbind is not initialized\n")
 		return nil
-    }
+	}
 	return db.hwDriverMap
 }
 
@@ -391,7 +507,7 @@ func (db *DevBind) HwBusMap() map[string]*HwInfo {
 	if !db.Inited {
 		tlog.DoPrintf("DevBind object not initialized\n")
 		return nil
-    }
+	}
 	return db.hwBusMap
 }
 
@@ -399,7 +515,7 @@ func (db *DevBind) IPRoute() IPRoute {
 	if !db.Inited {
 		tlog.DoPrintf("DevBind object not initialized\n")
 		return IPRoute{}
-    }
+	}
 	return db.ipRoute
 }
 
