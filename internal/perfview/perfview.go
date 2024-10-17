@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2022-2024 Intel Corporation
+// Copyright (c) 2023-2024 Intel Corporation
 
 package perfview
 
@@ -26,7 +26,7 @@ func Create(portCnt int, flex *kview.Flex, tabChar string) *PerfView {
 	perfView.pTextView = hlp.CreateTextView(
 		flex,
 		hlp.NewText("Performance ("+tabChar+")", kview.AlignLeft),
-		(portCnt * 2) + 2,
+		(portCnt*2)+2,
 		0,
 		true,
 	)

@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright (c) 2022-2024 Intel Corporation
+# Copyright (c) 2023-2024 Intel Corporation
 
 sources = []
 headers = files(
-  'gpkt_api.h',
+    '_inet.h',
+    'constants.h',
+    'gpkt.h',
 )
 
 includes = declare_dependency(include_directories: include_directories('.'))

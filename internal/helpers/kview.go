@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright(c) 2022-2024 Intel Corporation
+// Copyright(c) 2023-2024 Intel Corporation
 
 package helpers
 
@@ -175,7 +175,6 @@ func CreateList(flex *kview.Flex, msg TextInfo, fixedSize, proportion int, focus
 //	object a is bool then set the cell as selectable or not
 func SetCell(table *kview.Table, row, col int, msg TextInfo, selectable bool) *kview.TableCell {
 
-
 	tableCell := kview.NewTableCell(msg.Text)
 	tableCell.SetAlign(msg.Align)
 	tableCell.SetSelectable(selectable)
@@ -201,7 +200,6 @@ func CreateTabOrder(app *kview.Application, panelName string, data []tab.TabData
 
 	return to, nil
 }
-
 
 func CreateModal(p kview.Primitive, width, height int) kview.Primitive {
 	g := kview.NewGrid()

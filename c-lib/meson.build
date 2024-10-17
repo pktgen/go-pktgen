@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright (c) 2022-2024 Intel Corporation
+# Copyright (c) 2023-2024 Intel Corporation
 
 project('go-pktgen', 'c',
     version: run_command(find_program('cat', 'more'),
@@ -32,6 +32,7 @@ add_project_arguments('-D__PROJECT_VERSION="' + meson.project_version() + '"', l
 
 # specify -D_GNU_SOURCE unconditionally
 add_project_arguments('-D_GNU_SOURCE', language: 'c')
+add_project_arguments('-DALLOW_EXPERIMENTAL_API', language: 'c')
 
 # Add the gpkt_build_config.h as a default include for all files.
 global_inc = include_directories('.')
@@ -134,6 +135,8 @@ configure_file(output: build_cfg_file,
 
 build_cfg = declare_dependency(include_directories: include_directories('.'))
 
+subdir('includes')
+subdir('libs')
 subdir('gpkt')
 
 libgpkt_a = []

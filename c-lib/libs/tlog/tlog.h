@@ -1,17 +1,12 @@
-/*-
- * Copyright(c) <2022-2024>, Intel Corporation. All rights reserved.
- *
- * SPDX-License-Identifier: BSD-3-Clause
- */
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright(c) 2023-2024 Intel Corporation
 
-#ifndef TLOG_H_
-#define TLOG_H_
+#ifndef GPKT_TLOG_H_
+#define GPKT_TLOG_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdio.h>
 
 #define TLOG_BUF_SIZE 1024
 
@@ -21,8 +16,36 @@ typedef struct tlog_s {
     int buf_len;
 } tlog_t;
 
-int tlog_open(int pts);
+/**
+ * @brief Opens a log file descriptor for writing.
+ *
+ * This function opens a log file descriptor for writing. The file descriptor is
+ * used by the tlog_log() and tlog_printf() functions to send log messages to
+ * the log file.
+ *
+ * @return
+ *   - On success, the function returns the file descriptor of the log file.
+ *   - On error, the function returns -1.
+ */
+int tlog_open(void);
+
+/**
+ * @brief Closes the log file descriptor.
+ *
+ * This function closes the log file descriptor opened by tlog_open(). After
+ * calling this function, no more log messages will be sent to the log file.
+ *
+ * @return
+ *   - None.
+ */
 void tlog_close(void);
+
+/**
+ * @brief Get tlog file path.
+ *
+ * @return const char* - The path of the log file.
+ */
+const char *tlog_get_path(void);
 
 /**
  * Generates a log message.
@@ -211,4 +234,4 @@ int tlog_vlog(const char *func, int line, const char *format, va_list ap)
 }
 #endif
 
-#endif /* TLOG_H_ */
+#endif /* GPKT_TLOG_H_ */

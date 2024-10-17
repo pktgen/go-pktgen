@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2022-2024 Intel Corporation
+// Copyright (c) 2023-2024 Intel Corporation
 
 package configview
 
@@ -46,7 +46,7 @@ func Create(panels *kview.Panels, to *tab.Tab, portCnt int, tabChar string, flex
 
 	configView.cTable = hlp.CreateTableView(flex,
 		hlp.NewText(fmt.Sprintf("Configuration (%s) s:Toggle Start/Stop, a/A:All Start/Stop, e:Edit", tabChar),
-		kview.AlignLeft), 0, 1, true)
+			kview.AlignLeft), 0, 1, true)
 
 	configView.cTable.SetSeparator(kview.Borders.Vertical)
 	configView.cTable.SetSelectedStyle(tcell.ColorBlue, tcell.ColorYellow, 0)

@@ -1,6 +1,6 @@
 #!/bin/bash
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright (c) 2022-2024 Intel Corporation
+# Copyright (c) 2023-2024 Intel Corporation
 
 # A simple script to help build Go-Pktgen using meson/ninja tools.
 # The script also creates an installed directory called usr/local.

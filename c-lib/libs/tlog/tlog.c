@@ -1,8 +1,5 @@
-/*-
- * Copyright(c) <2012-2023>, Intel Corporation. All rights reserved.
- *
- * SPDX-License-Identifier: BSD-3-Clause
- */
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright(c) 2023-2024 Intel Corporation
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -14,39 +11,54 @@
 #include <execinfo.h>
 #include <errno.h>
 
-#include "tlog.h"
+#include <gpkt.h>
 
 static tlog_t tlog_info, *tlog;
 
-#define TLOG_PATH_PREFIX "/dev/pts/"
+#define TLOG_PATH_PREFIX   "/dev/pts/"
+#define TLOG_PATH_MAX_SIZE 128
+static char tlog_path[TLOG_PATH_MAX_SIZE];        // Path to the tlog file
 
 int
-tlog_open(int pts)
+tlog_set_path(const char *path)
 {
-    char buffer[64];
+    if (path && strlen(path) < TLOG_PATH_MAX_SIZE) {
+        if (path[0] != '/') {
+            strcpy(tlog_path, TLOG_PATH_PREFIX);
+            strncat(tlog_path, path, sizeof(tlog_path) - strlen(TLOG_PATH_PREFIX) - 1);
+        } else
+            strncpy(tlog_path, path, sizeof(tlog_path) - 1);
+        return 0;
+    }
+    return -1;
+}
 
-    if (pts == 0)
+const char *
+tlog_get_path(void)
+{
+    return tlog_path;
+}
+
+int
+tlog_open(void)
+{
+    if (strlen(tlog_path) == 0)
         return 0;
 
     if (tlog == NULL) {
         memset(&tlog_info, 0, sizeof(tlog_info));
         tlog     = &tlog_info;
         tlog->fd = -1;
-    }
-
-    if (tlog->fd > 0)
+    } else if (tlog->fd > 0)
         close(tlog->fd);
 
-    snprintf(buffer, sizeof(buffer) - 1, TLOG_PATH_PREFIX "%d", pts);
-
-    tlog->fd = open(buffer, O_WRONLY);
+    tlog->fd = open(tlog_path, O_WRONLY);
     if (tlog->fd < 0) {
-        fprintf(stderr, "Failed to open log file: (%s), %s(%d)\n", buffer, strerror(errno), errno);
+        fprintf(stderr, "Failed to open log file: (%s), %s(%d)\n", tlog_path, strerror(errno),
+                errno);
         return -1;
     }
 
-    printf("%s: Logging Started: '%s' @ %d\n", __func__, buffer, tlog->fd);
-    tlog_printf("\n%s: Logging Started: '%s'\n", __func__, buffer);
     return 0;
 }
 
@@ -56,9 +68,9 @@ tlog_close(void)
     if (tlog && tlog->fd < 0)
         close(tlog->fd);
 
-    tlog = NULL;
     memset(&tlog_info, 0, sizeof(tlog_info));
     tlog_info.fd = -1;
+    tlog         = NULL;
 }
 
 int
@@ -67,7 +79,7 @@ tlog_vlog(const char *func, int line, const char *format, va_list ap)
     char buff[TLOG_BUF_SIZE + 1];
     int n;
 
-    if (tlog->fd <= 0)
+    if (!tlog || tlog->fd <= 0)
         return 0;
 
     memset(buff, 0, sizeof(buff));

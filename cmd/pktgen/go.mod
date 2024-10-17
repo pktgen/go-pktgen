@@ -3,6 +3,7 @@ module github.com/pktgen/go-pktgen/cmd/pktgen
 go 1.23.2
 
 require (
+	github.com/ebitengine/purego v0.8.0
 	github.com/gdamore/tcell/v2 v2.7.4
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/pktgen/go-pktgen/internal/cfg v0.0.0-20241012144038-c37e26cff2ae
@@ -11,9 +12,9 @@ require (
 	github.com/pktgen/go-pktgen/internal/constants v0.0.0-20241012144038-c37e26cff2ae
 	github.com/pktgen/go-pktgen/internal/cpudata v0.0.0-20240929140900-6e3d578420b2
 	github.com/pktgen/go-pktgen/internal/dbg v0.0.0-20241012144038-c37e26cff2ae
-	github.com/pktgen/go-pktgen/internal/devbind v0.0.0-20241012144038-c37e26cff2ae
 	github.com/pktgen/go-pktgen/internal/etimers v0.0.0-20241012144038-c37e26cff2ae
 	github.com/pktgen/go-pktgen/internal/helpers v0.0.0-20241012144038-c37e26cff2ae
+	github.com/pktgen/go-pktgen/internal/iobind v0.0.0-20241020160801-861ac676c9a0
 	github.com/pktgen/go-pktgen/internal/meter v0.0.0-20241012144038-c37e26cff2ae
 	github.com/pktgen/go-pktgen/internal/perfview v0.0.0-20241012144038-c37e26cff2ae
 	github.com/pktgen/go-pktgen/internal/portinfo v0.0.0-20241012144038-c37e26cff2ae
@@ -29,7 +30,6 @@ require (
 require (
 	code.rocketnine.space/tslocum/cbind v0.1.5 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/ebitengine/purego v0.8.0 // indirect
 	github.com/fatih/color v1.17.0 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
