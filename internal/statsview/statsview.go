@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2022-2024 Intel Corporation
+// Copyright (c) 2023-2024 Intel Corporation
 
 package statsview
 
@@ -69,6 +69,8 @@ func (sv *StatsView) TxPercentArray() []float64 {
 func (sv *StatsView) DisplayStats() {
 
 	table := sv.sTable
+	table.Clear()
+
 	row := 0
 	width := -14
 	titles := []hlp.TextInfo{
@@ -97,7 +99,7 @@ func (sv *StatsView) DisplayStats() {
 	t := make([]hlp.TextInfo, 0)
 	t = append(t, hlp.NewText("", kview.AlignLeft))
 	for i := 0; i < sv.portCnt; i++ {
-			t = append(t, hlp.NewText(cz.Orange(fmt.Sprintf("Port %2d", i), 14), kview.AlignRight))
+		t = append(t, hlp.NewText(cz.Orange(fmt.Sprintf("Port %2d", i), 14), kview.AlignRight))
 	}
 
 	hlp.TableSetHeaders(table, 0, 0, t)
@@ -115,10 +117,10 @@ func (sv *StatsView) DisplayStats() {
 			hlp.NewText(cz.LightYellow("UP-100000-FD"), kview.AlignRight),
 			hlp.NewText(cz.Cyan(comma(0)), kview.AlignRight),
 			hlp.NewText(cz.Cyan(comma(0)), kview.AlignRight),
-			hlp.NewText(cz.Wheat(comma(0) + "/" + comma(0)), kview.AlignRight),
+			hlp.NewText(cz.Wheat(comma(0)+"/"+comma(0)), kview.AlignRight),
 			hlp.NewText(cz.Cyan(comma(0)), kview.AlignRight),
 			hlp.NewText(cz.Cyan(comma(0)), kview.AlignRight),
-			hlp.NewText(cz.Red(comma(0) + "/" + comma(0)), kview.AlignRight),
+			hlp.NewText(cz.Red(comma(0)+"/"+comma(0)), kview.AlignRight),
 			hlp.NewText(cz.Cyan(comma(0)), kview.AlignRight),
 			hlp.NewText(cz.Cyan(comma(0)), kview.AlignRight),
 			hlp.NewText(cz.Cyan(comma(0)), kview.AlignRight),

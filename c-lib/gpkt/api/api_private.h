@@ -1,8 +1,5 @@
-/*-
- * Copyright(c) <2022-2024>, Intel Corporation. All rights reserved.
- *
- * SPDX-License-Identifier: BSD-3-Clause
- */
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright(c) 2023-2024 Intel Corporation
 
 #ifndef API_PRIVATE_H_
 #define API_PRIVATE_H_
@@ -23,10 +20,10 @@
 extern "C" {
 #endif
 
-#define ARGV_MAX_NUM  32
+#define ARGV_MAX_NUM  64
 #define ARGV_MAX_SIZE 128
 
-// Local structure to hold command-line arguments
+// Local structure to hold command-line arguments and other application-specific data
 struct args_t {
     int argc;
     char *argv[ARGV_MAX_NUM];
@@ -39,7 +36,7 @@ typedef struct gpkt_s {
     volatile bool exit_flag;        // Flag to indicate whether to exit the application
 } gpkt_t;
 
-gpkt_t *gpkt;
+extern gpkt_t *gpkt;
 
 #ifdef __cplusplus
 }

@@ -1,4 +1,0 @@
-github.com/pktgen/go-pktgen/internal/tlog v0.0.0-20241012144038-c37e26cff2ae h1:pGIWMZWmWgBYy1pijXgmj37m32WAf6Ay8m3AbJg/P6M=
-github.com/pktgen/go-pktgen/internal/tlog v0.0.0-20241012144038-c37e26cff2ae/go.mod h1:kgsaneWdtkldh66U6Mn/h8kebNo6QGG2PqZ170uucjE=
-github.com/pktgen/go-pktgen/internal/utils v0.0.0-20241012144038-c37e26cff2ae h1:cWGzLjqeyV+KUsN7xbuHFoLAXzIWXDPPvAJPYtjTiqA=
-github.com/pktgen/go-pktgen/internal/utils v0.0.0-20241012144038-c37e26cff2ae/go.mod h1:grBOFirbS7MCu3BPGDqMMq2yM/WJsnu8qJoB+dkrpC8=

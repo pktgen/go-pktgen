@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright(c) 2022-2024 Intel Corporation
+// Copyright(c) 2023-2024 Intel Corporation
 
 package main
 
@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"sort"
-	"strings"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/pktgen/go-pktgen/pkgs/kview"
@@ -110,7 +109,7 @@ func SysInfoPanelSetup(cfg vp.VPanelConfig) (*vp.VPanelInfo, error) {
 	ps.netStats.SetScrollBarVisibility(kview.ScrollBarAuto)
 	ps.netStats.SetScrollBarColor(tcell.ColorCornflowerBlue)
 
-	ps.netPCI = hlp.CreateTableView(flex1, hlp.NewText("PCI Network Devices (p)", kview.AlignLeft), 0, 1, false)
+	ps.netPCI = hlp.CreateTableView(flex1, hlp.NewText("Network Devices (p)", kview.AlignLeft), 0, 1, false)
 	ps.netStats.SetFixed(1, 0)
 	ps.netPCI.SetSeparator(kview.Borders.Vertical)
 	ps.netPCI.SetScrollBarVisibility(kview.ScrollBarAuto)
@@ -148,11 +147,11 @@ func SysInfoPanelSetup(cfg vp.VPanelConfig) (*vp.VPanelInfo, error) {
 					ps.displayHost(ps.host)
 					ps.displayMem(ps.mem)
 					ps.displayNetInfo(ps.netInfo)
-					ps.netInfo.ScrollToBeginning()
 					ps.displayNetStats(ps.netStats)
 					ps.displayNetPCI(ps.netPCI)
 
 				case 0:
+					pktgen.db.Update()
 
 				case 1:
 
@@ -234,6 +233,8 @@ func (ps *PanelSystem) displayMem(view *kview.TextView) {
 // Display the Host network information
 func (ps *PanelSystem) displayNetInfo(view *kview.Table) {
 
+	view.Clear()
+
 	row := 0
 	col := 0
 
@@ -299,6 +300,7 @@ func (ps *PanelSystem) displayNetStats(view *kview.Table) {
 	row := 0
 	col := 0
 
+	view.Clear()
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		fmt.Printf("network interfaces: %s\n", err)
@@ -375,37 +377,22 @@ func (ps *PanelSystem) displayNetStats(view *kview.Table) {
 // Display the Host network PCI devices
 func (ps *PanelSystem) displayNetPCI(view *kview.Table) {
 
+	view.Clear()
 	titles := []hlp.TextInfo{
-		hlp.NewText(cz.Yellow("State", -8), kview.AlignLeft),
-		hlp.NewText(cz.Yellow("PCI Address"), kview.AlignLeft),
+		hlp.NewText(cz.Yellow("PCI Address", -13), kview.AlignLeft),
+		hlp.NewText(cz.Yellow("Driver", -12), kview.AlignLeft),
+		hlp.NewText(cz.Yellow("Module", -12), kview.AlignLeft),
 		hlp.NewText(cz.Yellow("Device Info"), kview.AlignLeft),
 	}
 	row := hlp.TableSetHeaders(view, 0, 0, titles)
 
-	lines := pktgen.db.PCILines()
-	for _, line := range lines {
-		if len(line) == 0 {
-			continue
-		}
-
-		fields := strings.Split(line, "Ethernet controller:")
-
-		fields[0] = strings.TrimSpace(fields[0])
-		fields[1] = strings.TrimSpace(fields[1])
-
+	netList := pktgen.db.PciNetList()
+	for _, net := range netList {
 		rowData := []hlp.TextInfo{
-			hlp.NewText("", kview.AlignLeft),
-			hlp.NewText(cz.CornSilk(fields[0]), kview.AlignLeft),
-			hlp.NewText(cz.SkyBlue(fields[1]), kview.AlignLeft),
-		}
-		for _, r := range pktgen.db.HwInfo() {
-			if strings.Contains(r.BusInfo, fields[0]) {
-				if r.Config.Driver == "vfio-pci" {
-					rowData[0].Text = cz.GoldenRod("*Usable*")
-				} else {
-					rowData[0].Text = "*Active*"
-				}
-			}
+			hlp.NewText(cz.CornSilk(net.Slot), kview.AlignLeft),
+			hlp.NewText(net.Driver, kview.AlignLeft),
+			hlp.NewText(cz.GoldenRod(net.Module), kview.AlignLeft),
+			hlp.NewText(cz.SkyBlue(net.Device), kview.AlignLeft),
 		}
 		col := 0
 		for _, v := range rowData {

@@ -1,14 +1,15 @@
-/*-
- * Copyright(c) <2012-2023>, Intel Corporation. All rights reserved.
- *
- * SPDX-License-Identifier: BSD-3-Clause
- */
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright(c) 2023-2024 Intel Corporation
 
 #include <stdio.h>
 #include <unistd.h>
 
 #include <tlog.h>
+#include <port.h>
+#include <single.h>
+#include <pcap.h>
 
+#include "parse_args.h"
 #include "api_private.h"
 
 static gpkt_t gpkt_info;
@@ -19,16 +20,35 @@ static struct args_t arg_data, *args = &arg_data;
 static bool gpkt_exit_flag;
 
 int
-gpktSetArgv(char *s)
+gpkt_add_argv(char *arg)
 {
     if (args) {
         if (args->argc >= ARGV_MAX_NUM)
             return -1;
 
-        strncpy(args->argv_str[args->argc], s, ARGV_MAX_SIZE - 1);
+        strncpy(args->argv_str[args->argc], arg, ARGV_MAX_SIZE - 1);
         args->argv[args->argc] = args->argv_str[args->argc];
         args->argc++;
     }
+    return 0;
+}
+
+int
+init_pktgen(int argc, char **argv)
+{
+    (void)argc;
+    (void)argv;
+
+    if (parse_args(argc, argv) < 0)
+        TLOG_ERR_RET("Failed to parse arguments\n");
+
+    if (init_ports() < 0)
+        TLOG_ERR_RET("Failed to initialize ports\n");
+    if (init_single_mode() < 0)
+        TLOG_ERR_RET("Failed to initialize single mode\n");
+    if (init_pcap_mode() < 0)
+        TLOG_ERR_RET("Failed to initialize pcap mode\n");
+
     return 0;
 }
 
@@ -36,25 +56,34 @@ static void *
 _thread_func(void *arg)
 {
     struct args_t *args = arg;
-    int err;
+    int argc            = args->argc;
+    char **argv         = args->argv;
+    int num;
 
     tlog_printf("Initializing Go-Pktgen thread...\n");
 
     if (pthread_setname_np(pthread_self(), "gpkt_thread"))
         TLOG_NULL_RET("Failed to set thread name\n");
 
-    tlog_printf("Initializing Go-Pktgen thread with %d args...\n", args->argc);
-    for (int i = 0; i < args->argc; i++)
-        tlog_printf("    argv[%d]: %s\n", i, args->argv[i]);
+    tlog_printf("Initializing Go-Pktgen thread with %d args\n  argv:", argc);
+    for (int i = 0; i < argc; i++)
+        tlog_printf("%s ", argv[i]);
+    tlog_printf("\n");
 
-    if ((err = rte_eal_init(args->argc, args->argv)) < 0)
+    if ((num = rte_eal_init(argc, argv)) < 0)
         TLOG_NULL_RET("Error with EAL initialization Error: %d\n", rte_errno);
+
+    argc -= num;
+    argv += num;
 
     if (pthread_barrier_wait(&args->barrier) > 0)
         TLOG_NULL_RET("Failed to wait for barrier\n");
 
     TLOG_PRINT("DPDK initializing is done, available ports %d of %d total, pid %d tid %d\n",
                rte_eth_dev_count_avail(), rte_eth_dev_count_total(), getpid(), gettid());
+
+    if (init_pktgen(argc, argv) < 0)
+        TLOG_NULL_RET("Failed to initialize Pktgen\n");
 
     gpkt_exit_flag = false;
     for (;;) {
@@ -68,33 +97,52 @@ _thread_func(void *arg)
 
 // Initialize DPDK
 int
-gpktStart(void)
+gpkt_start(void)
 {
+    int err;
+
+    if (tlog_open() < 0) {
+        printf("Failed to open tlog (%s)\n", tlog_get_path());
+        return -1;
+    }
+
     if (getuid() != 0)
         TLOG_ERR_RET("Go-Pktgen must be run as root for DPDK\n");
 
     if (pthread_barrier_init(&args->barrier, NULL, 2))
         TLOG_ERR_RET("Failed to initialize barrier\n");
 
-    if (pthread_create(&gpkt->pid, NULL, &_thread_func, (void *)&arg_data) == 0) {
-        if (pthread_barrier_wait(&args->barrier) > 0)
-            TLOG_ERR_GOTO(error, "Failed to wait on barrier\n");
+    if ((err = pthread_create(&gpkt->pid, NULL, &_thread_func, (void *)&arg_data)) != 0)
+        TLOG_ERR_GOTO(error, "Failed to create thread error(%d)\n", err);
+    else {
+        tlog_printf("Go-Pktgen thread created successfully, pid %d tid %ld\n", getpid(), gpkt->pid);
+
+        if ((err = pthread_barrier_wait(&args->barrier)) > 0)
+            TLOG_ERR_GOTO(error, "Failed to wait on barrier error (%d)\n", err);
+
+        if ((err = pthread_barrier_destroy(&args->barrier)) > 0)
+            TLOG_ERR_RET("Failed to destroy barrier error (%d)\n", err);
     }
 
-error:
-    if (pthread_barrier_destroy(&args->barrier))
-        TLOG_ERR_RET("Failed to destroy barrier\n");
-
     return 0;
+
+error:
+    if ((err = pthread_barrier_destroy(&args->barrier)) > 0)
+        TLOG_ERR_RET("Failed to destroy barrier error (%d)\n", err);
+
+    return -1;
 }
 
 void
-gpktStop(void)
+gpkt_stop(void)
 {
     if (gpkt) {
+        int err;
+
         gpkt_exit_flag = true;
 
-        pthread_join(gpkt->pid, NULL);
+        if ((err = pthread_join(gpkt->pid, NULL)) > 0)
+            TLOG_RET("Failed to join thread error (%d)\n", err);
 
         tlog_close();
 

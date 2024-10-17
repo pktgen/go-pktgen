@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright(c) 2022-2024 Intel Corporation
+// Copyright(c) 2023-2024 Intel Corporation
 
 package main
 
@@ -16,7 +16,8 @@ import (
 	"github.com/pktgen/go-pktgen/internal/cfg"
 	"github.com/pktgen/go-pktgen/internal/cpudata"
 	"github.com/pktgen/go-pktgen/internal/dbg"
-	"github.com/pktgen/go-pktgen/internal/devbind"
+	"github.com/pktgen/go-pktgen/internal/iobind"
+	"github.com/pktgen/go-pktgen/internal/l2p"
 	"github.com/pktgen/go-pktgen/pkgs/kview"
 
 	flags "github.com/jessevdk/go-flags"
@@ -33,6 +34,7 @@ const (
 
 const (
 	SinglePanelIndex = iota
+	MappingPanelIndex
 	SysInfoPanelIndex
 	CPUPanelIndex
 )
@@ -57,15 +59,16 @@ type Pktgen struct {
 	cpuData    *cpudata.CPUData   // CPU data
 	portCnt    int                // Maximum number of ports
 	cfg        *cfg.System        // Configuration system
+	l2p        *l2p.L2p           // L2P system
 	ModalPages []*ModalPage       // Modal pages
-	db         *devbind.DevBind	  // Device binding object
-	PureGo     uintptr			  // PureGo object
+	db         *iobind.BindIO     // Device binding object
+	PureGo     uintptr            // PureGo object
 }
 
 // Options command line options
 type Options struct {
 	ConfigData  string `short:"c" long:"config-data" description:"JSON configuration file or string"`
-	Ptty		int    `short:"p" long:"ptty" description:"Enable pseudo-TTY mode (for debugging)" default:"0"`
+	Ptty        int    `short:"p" long:"ptty" description:"Enable pseudo-TTY mode (for debugging)" default:"0"`
 	ShowVersion bool   `short:"V" long:"version" description:"Print out version and exit"`
 	Verbose     bool   `short:"v" long:"verbose" description:"Output verbose messages"`
 }
@@ -101,19 +104,6 @@ func main() {
 
 	pktgen.app.SetRoot(topFlex, true)
 	pktgen.app.EnableMouse(true)
-
-	pktgen.db = devbind.New(devbind.WithTimeout(5))
-
-	pktgen.db.Start()
-
-	if err := pktgen.db.BindPorts(pktgen.cfg.PortList()); err != nil {
-		fmt.Printf("Go-Pktgen: %v\n", err)
-		for k, v := range pktgen.db.HwInfo() {
-			fmt.Printf("hwInfo: %v : %v - %v\n", k, v.BusInfo, v.Config.Driver)
-		}
-		return
-	}
-	defer pktgen.db.Stop()
 
 	pktgen.timers = et.New(et.WithTimeout(2), et.WithSteps(4))
 	pktgen.timers.Start()
@@ -201,8 +191,14 @@ func main() {
 	if err := gpktApiStart(pktgen.cfg); err != nil {
 		panic(err)
 	}
-
+	// The following hangs until the application is stopped and not able to unbind ports.
+	//defer func(devices []string) { pktgen.db.IOUnbindPorts(devices) }(pktgen.cfg.PortList())
 	defer gpktApiStop()
+
+	pktgen.l2p = l2p.New()
+	pktgen.l2p.AddMapping(pktgen.cfg.PortMapping()...)
+	pktgen.l2p.ProcessMaps()
+	tlog.DoPrintf("L2P: %s\n", pktgen.l2p.Marshal())
 
 	// Start the application.
 	pktgen.app.SetRoot(topFlex, true)
@@ -239,6 +235,8 @@ func initializePktgen() error {
 		app:     kview.NewApplication(),
 		panels:  kview.NewPanels(),
 		portCnt: pktgen.portCnt,
+		db:      iobind.New(),
+		cfg:     cfg.New(),
 	}
 
 	_, err := parser.Parse()
@@ -247,25 +245,28 @@ func initializePktgen() error {
 		os.Exit(1)
 	}
 
-	cs := cfg.New()
-	if err := cs.Open(options.ConfigData); err != nil {
+	if err := pktgen.cfg.Open(options.ConfigData); err != nil {
 		fmt.Printf("load configuration failed: %s\n", err)
 		os.Exit(1)
 	}
-	pktgen.cfg = cs
 
 	// Command line options override configuration file.
 	if options.Ptty > 0 {
-		cs.SetDebugTTY(options.Ptty)
-    }
+		pktgen.cfg.SetDebugTTY(options.Ptty)
+	}
 
-	if cs.DebugTTY() > 0 {
-		err = tlog.Open(cs.DebugTTY())
+	if pktgen.cfg.DebugTTY() > 0 {
+		err = tlog.Open(pktgen.cfg.DebugTTY())
 		if err != nil {
 			fmt.Printf("tlog open failed: %s\n", err)
 			os.Exit(1)
 		}
 		tlog.Register(mainLog, true)
+	}
+
+	if err := pktgen.db.IOBindPorts(pktgen.cfg.PciList()); err != nil {
+		fmt.Printf("Go-Pktgen: %v\n", err)
+		return err
 	}
 
 	str := PktgenInfo(false)

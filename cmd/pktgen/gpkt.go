@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright(c) 2022-2024 Intel Corporation
+// Copyright(c) 2023-2024 Intel Corporation
 
 package main
 
@@ -13,104 +13,114 @@ import (
 )
 
 const (
-	gpktApiLibName    string = "./c-lib/usr/local/lib/x86_64-linux-gnu/libgpkt_api.so"
-	gpktSingleLibName string = "./c-lib/usr/local/lib/x86_64-linux-gnu/libgpkt_single.so"
+	apiLibName  string = "./c-lib/usr/local/lib/x86_64-linux-gnu/libgpkt_api.so"
+	hmapLibName  string = "./c-lib/usr/local/lib/x86_64-linux-gnu/libgpkt_hmap.so"
+	modeLibName string = "./c-lib/usr/local/lib/x86_64-linux-gnu/libgpkt_modes.so"
 	tlogLibName string = "./c-lib/usr/local/lib/x86_64-linux-gnu/libgpkt_tlog.so"
 )
 
 type gpktLib struct {
-	libName string  // Name of the library.
-	libPtr  uintptr // library handle from dlopen().
+	Name   string  // Name of the library.
+	Handle uintptr // library handle from dlopen().
 }
 
-type gpktApiLib struct {
-	gpktLib
-
-	gpktStart   func() int // Start function.
-	gpktStop    func() int                        // Stop function.
-	gpktSetArgv func(arg string) int              // Set the argv values function.
-	tlogOpen    func(pts int) int                 // Open function for tlog.
+type gpktApi struct {
+	FuncName string      // Function Name of the library.
+	FuncPtr  interface{} // Function pointer.
 }
 
-type gpktSingleLib struct {
-	gpktLib
+type gpktApis struct {
+	tlogSetPath func(path string) int // Set tlog path variable.
+	gpktAddArgv func(arg string) int  // Add a argv value.
+	gpktStart   func() int            // Start function.
+	gpktStop    func() int            // Stop function.
 }
 
 var (
-	gApi    gpktApiLib
-	gSingle gpktSingleLib
+	gLibMap  map[string]*gpktLib // Map of library names to their handles.
+	gLibList []gpktLib           // List of library names and their handles.
+	gApi     gpktApis            // Set of C API functions and their pointers.
 )
 
 func openLibrary(name string) (uintptr, error) {
 	return purego.Dlopen(name, purego.RTLD_NOW|purego.RTLD_GLOBAL)
 }
 
-func gpktLoadApis() error {
+func gpktLoadLibraries() error {
 
-	if _, err := openLibrary(tlogLibName); err != nil {
-		return fmt.Errorf("error loading %s: %v", tlogLibName, err)
-	}
-	tlog.DoPrintf("Loading %s...\n", gpktApiLibName)
-	if lib, err := openLibrary(gpktApiLibName); err != nil {
-		return fmt.Errorf("error loading %s: %v", gpktApiLibName, err)
-	} else {
-		g := gpktApiLib{}
-		g.libName = gpktApiLibName
-		g.libPtr = lib
+	// Initialize the library map and list plus the C API functions.
+	gLibMap = make(map[string]*gpktLib)
+	gLibList = []gpktLib{}
+	gApi = gpktApis{}
 
-		purego.RegisterLibFunc(&g.gpktStart, uintptr(lib), "gpktStart")
-		purego.RegisterLibFunc(&g.gpktStop, uintptr(lib), "gpktStop")
-		purego.RegisterLibFunc(&g.gpktSetArgv, uintptr(lib), "gpktSetArgv")
-		purego.RegisterLibFunc(&g.tlogOpen, uintptr(lib), "tlog_open")
-
-		gApi = g
+	libList := []string{ // Library must be loaded in this order and new libraries should be added here.
+		tlogLibName,
+		hmapLibName,
+		modeLibName,
+		apiLibName,
 	}
 
-	tlog.DoPrintf("Loading %s...\n", gpktSingleLibName)
-	if lib, err := openLibrary(gpktSingleLibName); err != nil {
-		return fmt.Errorf("error loading %s", gpktSingleLibName)
-	} else {
-		g := gpktSingleLib{}
-		g.libName = gpktApiLibName
-		g.libPtr = lib
+	// Load the libraries in the order they are listed above.
+	for _, libName := range libList {
+		gLib := gpktLib{Name: libName}
+		gLibList = append(gLibList, gLib)
+		gLibMap[libName] = &gLib
 
-		gSingle = g
+		if handle, err := openLibrary(libName); err != nil {
+			return fmt.Errorf("error loading %s: %v", libName, err)
+		} else {
+			tlog.DoPrintf("Library %s loaded successfully\n", libName)
+			gLib.Handle = handle
+		}
+	}
 
+	// Add new API functions to be registered here.
+	gpktApis := []gpktApi{
+		{FuncName: "tlog_set_path", FuncPtr: &gApi.tlogSetPath},
+		{FuncName: "gpkt_add_argv", FuncPtr: &gApi.gpktAddArgv},
+		{FuncName: "gpkt_start", FuncPtr: &gApi.gpktStart},
+		{FuncName: "gpkt_stop", FuncPtr: &gApi.gpktStop},
+	}
+	tlog.DoPrintf("Registering API functions...\n")
+	for _, v := range gpktApis {
+		tlog.DoPrintf("   %s\n", v.FuncName)
+
+		// Use uintptr(0) for library handler pointer to use running program symbols.
+		purego.RegisterLibFunc(v.FuncPtr, uintptr(0), v.FuncName)
 	}
 	return nil
 }
 
 // gpktApiStart returning the basic information string
-func gpktApiStart(c *cfg.System) error {
+func gpktApiStart(cfg *cfg.System) error {
 
-	// Convert the configData to C-compatible types
-	argv, err := c.MakeArgs()
+	// Create the DPDK arguments
+	argv, err := cfg.GetArgsDPDK()
 	if err != nil {
-		tlog.DoPrintf("error MakeArgs() failed: %v\n", err)
+		tlog.DoPrintf("error cfg.Parse() failed: %v\n", err)
 		return err
 	}
+	fmt.Printf("Starting Go-Pktgen with argc %d: %v\n", len(argv), argv)
 
 	argc := len(argv)
 	if argc == 0 {
 		return fmt.Errorf("no configuration arguments found")
 	}
 
-	tlog.DoPrintf("Starting Go-Pktgen with argc %d: %v\n", argc, argv)
-
-	if err := gpktLoadApis(); err != nil {
+	if err := gpktLoadLibraries(); err != nil {
 		return fmt.Errorf("error loading Go-Pktgen APIs: %v", err)
 	}
 
 	// Set the Ptty if provided for logging
-	if err := gApi.tlogOpen(c.DebugTTY()); err < 0 {
-		return fmt.Errorf("error setting Ptty: %d", err)
+	if err := gApi.tlogSetPath(fmt.Sprintf("/dev/pts/%d", cfg.DebugTTY())); err < 0 {
+		return fmt.Errorf("error setting Ptty: %s", err)
 	}
 
 	// Set the C-compatible array of strings
 	for _, s := range argv {
-		if ret := gApi.gpktSetArgv(s); ret < 0 {
-            return fmt.Errorf("error setting C-compatible argument")
-        }
+		if ret := gApi.gpktAddArgv(s); ret < 0 {
+			return fmt.Errorf("error setting C-compatible argument")
+		}
 	}
 
 	// Clear the screen by scrolling the terminal to the top left corner
@@ -118,11 +128,13 @@ func gpktApiStart(c *cfg.System) error {
 		fmt.Fprintf(os.Stderr, "\n")
 	}
 
-	tlog.DoPrintf("Starting Go-Pktgen with Ptty: %v\n", c.DebugTTY())
+	if cfg.DebugTTY() > 0 {
+		tlog.DoPrintf("Starting Go-Pktgen with Ptty: /dev/pts/%d\n", cfg.DebugTTY())
+	}
 
-	// Initialize the DPDK
+	// Initialize the DPDK system
 	if ret := gApi.gpktStart(); ret < 0 {
-		return fmt.Errorf("failed to initialize DPDK")
+		return fmt.Errorf("failed to initialize DPDK (%d)", ret)
 	}
 
 	return nil
