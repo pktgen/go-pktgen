@@ -108,9 +108,6 @@ func main() {
 
 	if err := pktgen.db.BindPorts(pktgen.cfg.PortList()); err != nil {
 		fmt.Printf("Go-Pktgen: %v\n", err)
-		for k, v := range pktgen.db.HwInfo() {
-			fmt.Printf("hwInfo: %v : %v - %v\n", k, v.BusInfo, v.Config.Driver)
-		}
 		return
 	}
 	defer pktgen.db.Stop()

@@ -69,6 +69,8 @@ func (sv *StatsView) TxPercentArray() []float64 {
 func (sv *StatsView) DisplayStats() {
 
 	table := sv.sTable
+	table.Clear()
+
 	row := 0
 	width := -14
 	titles := []hlp.TextInfo{

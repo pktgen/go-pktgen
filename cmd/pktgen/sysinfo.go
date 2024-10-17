@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"sort"
-	"strings"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/pktgen/go-pktgen/pkgs/kview"
@@ -234,6 +233,8 @@ func (ps *PanelSystem) displayMem(view *kview.TextView) {
 // Display the Host network information
 func (ps *PanelSystem) displayNetInfo(view *kview.Table) {
 
+	view.Clear()
+
 	row := 0
 	col := 0
 
@@ -295,6 +296,8 @@ func (ps *PanelSystem) displayNetInfo(view *kview.Table) {
 
 // Display the Host network statistics
 func (ps *PanelSystem) displayNetStats(view *kview.Table) {
+
+	view.Clear()
 
 	row := 0
 	col := 0
@@ -375,37 +378,20 @@ func (ps *PanelSystem) displayNetStats(view *kview.Table) {
 // Display the Host network PCI devices
 func (ps *PanelSystem) displayNetPCI(view *kview.Table) {
 
+	view.Clear()
 	titles := []hlp.TextInfo{
-		hlp.NewText(cz.Yellow("State", -8), kview.AlignLeft),
-		hlp.NewText(cz.Yellow("PCI Address"), kview.AlignLeft),
+		hlp.NewText(cz.Yellow("Driver", -12), kview.AlignLeft),
+		hlp.NewText(cz.Yellow("PCI Address", -13), kview.AlignLeft),
 		hlp.NewText(cz.Yellow("Device Info"), kview.AlignLeft),
 	}
 	row := hlp.TableSetHeaders(view, 0, 0, titles)
 
-	lines := pktgen.db.PCILines()
-	for _, line := range lines {
-		if len(line) == 0 {
-			continue
-		}
-
-		fields := strings.Split(line, "Ethernet controller:")
-
-		fields[0] = strings.TrimSpace(fields[0])
-		fields[1] = strings.TrimSpace(fields[1])
-
+	netList := pktgen.db.NetList()
+	for _, net := range netList {
 		rowData := []hlp.TextInfo{
-			hlp.NewText("", kview.AlignLeft),
-			hlp.NewText(cz.CornSilk(fields[0]), kview.AlignLeft),
-			hlp.NewText(cz.SkyBlue(fields[1]), kview.AlignLeft),
-		}
-		for _, r := range pktgen.db.HwInfo() {
-			if strings.Contains(r.BusInfo, fields[0]) {
-				if r.Config.Driver == "vfio-pci" {
-					rowData[0].Text = cz.GoldenRod("*Usable*")
-				} else {
-					rowData[0].Text = "*Active*"
-				}
-			}
+			hlp.NewText(net.Driver, kview.AlignLeft),
+			hlp.NewText(cz.CornSilk(net.Slot), kview.AlignLeft),
+			hlp.NewText(cz.SkyBlue(net.Device), kview.AlignLeft),
 		}
 		col := 0
 		for _, v := range rowData {

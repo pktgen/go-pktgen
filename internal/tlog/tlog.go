@@ -125,7 +125,7 @@ ForLoop:
 	for {
 		select {
 		case <-tlog.quit: // Quit
-		    fmt.Fprintf(tlog.fd, "\n*** TLOG STOPPING AT %s ***\n", time.Now().Format(time.DateTime))
+			fmt.Fprintf(tlog.fd, "\n*** TLOG STOPPING AT %s ***\n", time.Now().Format(time.DateTime))
 			break ForLoop
 		case str := <-tlog.out:
 			fmt.Fprintf(tlog.fd, "%s", str)
@@ -255,6 +255,8 @@ func Log(id string, format string, a ...interface{}) int {
 			}
 			return len(s)
 		}
+	} else {
+		fmt.Printf(getCallerFunc()+format, a...)
 	}
 	return 0
 }
@@ -280,6 +282,8 @@ func DoPrintf(format string, a ...interface{}) int {
 		s := fmt.Sprintf(getCallerFunc()+format, a...)
 		tlog.out <- s
 		return len(s)
+	} else {
+		fmt.Printf(getCallerFunc()+format, a...)
 	}
 	return 0
 }
